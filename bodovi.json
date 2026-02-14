@@ -1,0 +1,22 @@
+{
+  "korisnici": [],
+  "kategorije_stats": {
+    "kultura": [],
+    "znanost": [],
+    "sport": [],
+    "povijest": [],
+    "zemljopis": [],
+    "glazba": [],
+    "film": [],
+    "cisco_academy": []
+  },
+  "leaderboard": {
+    "dnevni": [],
+    "tjedni": [],
+    "mjesecni": [],
+    "ukupno": []
+  },
+  "postavke": {
+    "psovke_filter": ["psovka1", "psovka2"]
+  }
+}

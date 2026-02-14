@@ -1,0 +1,18 @@
+[
+  {
+    "pitanje": "Koji je početni broj u rasponu za standardne ACL liste?",
+    "odgovor": "1"
+  },
+  {
+    "pitanje": "Na kojem sučelju (bliže izvoru ili odredištu) se postavlja standardna ACL?",
+    "odgovor": "odredištu"
+  },
+  {
+    "pitanje": "Koja se wildcard maska koristi za blokiranje jednog specifičnog hosta?",
+    "odgovor": "0.0.0.0"
+  },
+  {
+    "pitanje": "Kratica za Access Control List je?",
+    "odgovor": "ACL"
+  }
+]
