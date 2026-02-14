@@ -20,7 +20,6 @@ let odgovorenoPuta = 0;
 let tajmerInterval = null;
 let aktivnaKategorija = "";
 
-// --- FUNKCIJA ZA BODOVANJE ---
 async function azurirajBodove(nadimak, osvojeniBodovi, kategorija) {
     try {
         const baza = await fs.readJson(BODOVI_FILE);
@@ -29,7 +28,6 @@ async function azurirajBodove(nadimak, osvojeniBodovi, kategorija) {
             if (!korisnik.ukupni_bodovi) korisnik.ukupni_bodovi = 0;
             korisnik.ukupni_bodovi += osvojeniBodovi;
         }
-
         if (!baza.kategorije_stats[kategorija]) baza.kategorije_stats[kategorija] = [];
         let katStat = baza.kategorije_stats[kategorija].find(s => s.nadimak === nadimak);
         if (!katStat) {
@@ -37,7 +35,6 @@ async function azurirajBodove(nadimak, osvojeniBodovi, kategorija) {
         } else {
             katStat.bodovi += osvojeniBodovi;
         }
-
         const tipovi = ['dnevni', 'tjedni', 'mjesecni', 'ukupno'];
         tipovi.forEach(tip => {
             if (!baza.leaderboard[tip]) baza.leaderboard[tip] = [];
@@ -49,25 +46,21 @@ async function azurirajBodove(nadimak, osvojeniBodovi, kategorija) {
             }
             baza.leaderboard[tip].sort((a, b) => b.bodovi - a.bodovi);
         });
-
         await fs.writeJson(BODOVI_FILE, baza, { spaces: 2 });
     } catch (err) {
         console.error("Greška pri ažuriranju bodova:", err);
     }
 }
 
-// --- SOCKET LOGIKA ---
 io.on('connection', (socket) => {
     socket.on('prijava', async (podaci) => {
         try {
             const baza = await fs.readJson(BODOVI_FILE);
             let korisnik = baza.korisnici.find(u => u.nadimak === podaci.nadimak);
-
             if (korisnik && korisnik.banovanDo && korisnik.banovanDo > Date.now()) {
                 const preostalo = new Date(korisnik.banovanDo).toLocaleString('hr-HR');
                 return socket.emit('ban_info', `Zabranjen pristup. Ban istječe: ${preostalo}`);
             }
-
             if (!korisnik) {
                 korisnik = { 
                     nadimak: podaci.nadimak, 
@@ -80,11 +73,9 @@ io.on('connection', (socket) => {
                 baza.korisnici.push(korisnik);
                 await fs.writeJson(BODOVI_FILE, baza);
             }
-
             if (korisnik.lozinka !== podaci.lozinka) {
                 return socket.emit('obavijest', "Pogrešna lozinka!");
             }
-
             socket.nadimak = korisnik.nadimak;
             socket.emit('prijavljen', { nadimak: korisnik.nadimak });
         } catch (err) {
@@ -111,7 +102,6 @@ io.on('connection', (socket) => {
         const msg = odgovor.toLowerCase().trim();
         const baza = await fs.readJson(BODOVI_FILE);
         let korisnik = baza.korisnici.find(u => u.nadimak === socket.nadimak);
-
         if (PSOVKE.some(p => msg.includes(p))) {
             korisnik.opomene++;
             if (korisnik.opomene >= 2) {
@@ -123,7 +113,6 @@ io.on('connection', (socket) => {
             await fs.writeJson(BODOVI_FILE, baza);
             return socket.emit('obavijest', "⚠️ PRVO UPOZORENJE! Zabranjeno psovanje.");
         }
-
         const tocan = trenutnoPitanje.odgovor.toLowerCase().trim();
         if (msg === tocan) {
             odgovorenoPuta++;
@@ -152,4 +141,4 @@ function pokreniTajmer() {
 }
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`Server na portu ${PORT}`));
+server.listen(PORT, () => console.log(`Server radi na portu ${PORT}`));
