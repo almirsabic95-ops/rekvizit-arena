@@ -1,42 +1,63 @@
-const fetch = require('node-fetch');
+const { MongoClient } = require('mongodb');
 const fs = require('fs-extra');
 
-// Mapa kategorija (ID-ovi sa Open Trivia DB)
-const kategorijeMap = {
-    "sport": 21,
-    "povijest": 23,
-    "znanost": 17,
-    "film": 11,
-    "zemljopis": 22,
-    "kultura": 25,
-    "glazba": 12
-};
+// 1. TVOJI PODACI (Zamijeni lozinku svojom lozinkom iz Atlasa)
+const URI = "mongodb+srv://rekvizit:<db_arenakviz>@rekvizit.o6ugw5r.mongodb.net/?appName=Rekvizit";
+const client = new MongoClient(URI);
+
+const kategorije = [
+    { id: 21, ime: 'sport' },
+    { id: 22, ime: 'geografija' }
+];
 
 async function povuciPitanja() {
-    console.log("Započinjem punjenje Arene pitanjima...");
+    try {
+        console.log("🚀 Povezujem se na Rekvizit Cloud...");
+        await client.connect();
+        const db = client.db("KvizDB");
+        const collection = db.collection("Pitanja");
 
-    for (const [ime, id] of Object.entries(kategorijeMap)) {
-        try {
-            // Povlačimo 20 pitanja po kategoriji
-            const url = `https://opentdb.com/api.php?amount=20&category=${id}&type=multiple`;
+        for (const { id, ime } of kategorije) {
+            console.log(`📡 Povlačim pitanja za kategoriju: ${ime}...`);
+            
+            // Povlačimo 50 pitanja u Base64 formatu za maksimalnu stabilnost
+            const url = `https://opentdb.com/api.php?amount=50&category=${id}&type=multiple&encode=base64`;
             const res = await fetch(url);
             const data = await res.json();
 
-            if (data.results) {
-                const formatiranaPitanja = data.results.map(p => ({
-                    pitanje: p.question.replace(/&quot;/g, '"').replace(/&#039;/g, "'"),
-                    odgovor: p.correct_answer.replace(/&quot;/g, '"').replace(/&#039;/g, "'")
-                }));
+            if (data.results && data.results.length > 0) {
+                const formatiranaPitanja = data.results.map(p => {
+                    // SIGURNO DEKODIRANJE (Rješava tvoj InvalidCharacter i URI malformed problem)
+                    const dekodiraj = (str) => Buffer.from(str, 'base64').toString('utf8');
 
+                    return {
+                        pitanje: dekodiraj(p.question),
+                        odgovor: dekodiraj(p.correct_answer),
+                        netacni: p.incorrect_answers.map(odg => dekodiraj(odg)),
+                        kategorija: ime,
+                        datum_dodavanja: new Date()
+                    };
+                });
+
+                // 2. SLANJE U CLOUD (MongoDB)
+                // Prvo brišemo stara pitanja te kategorije (opcionalno) i ubacujemo nova
+                await collection.deleteMany({ kategorija: ime });
+                await collection.insertMany(formatiranaPitanja);
+
+                // 3. LOKALNA REZERVA (Zadržavamo tvoj .json sistem za svaki slučaj)
                 const putanja = `./pitanja/${ime}.json`;
+                await fs.ensureDir('./pitanja');
                 await fs.writeJson(putanja, formatiranaPitanja, { spaces: 2 });
-                console.log(`✅ Kategorija [${ime.toUpperCase()}] je napunjena!`);
+
+                console.log(`✅ Kategorija [${ime}] uspješno osvježena u Cloudu i lokalno!`);
             }
-        } catch (error) {
-            console.log(`❌ Greška kod kategorije ${ime}:`, error.message);
         }
+    } catch (e) {
+        console.error("❌ Greška u radu:", e);
+    } finally {
+        await client.close();
+        console.log("🔌 Veza sa bazom zatvorena.");
     }
-    console.log("\nSve datoteke su spremne u mapi /pitanja.");
 }
 
 povuciPitanja();
