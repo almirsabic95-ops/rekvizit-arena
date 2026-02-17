@@ -2,96 +2,119 @@
 <html lang="hr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rekvizit Arena</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { --accent: #00bfff; --bg: #121212; }
-        body { background: var(--bg); color: white; font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-box { background: #1a1a1a; padding: 30px; border-radius: 12px; border: 2px solid #333; width: 320px; text-align: center; }
-        input, textarea { width: 100%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #444; color: var(--accent); border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 6px; }
+        :root { --accent: #00bfff; --bg: #121212; --panel: #1a1a1a; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; overflow: hidden; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        
+        .box { background: var(--panel); padding: 30px; border: 2px solid #333; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h2 { color: var(--accent); letter-spacing: 1px; margin-bottom: 20px; font-size: 20px; }
+        
+        input, textarea { width: 100%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #444; color: var(--accent); border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+        button { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 6px; margin-top: 10px; }
+        
         .hidden { display: none !important; }
-        .forgot-link { color: #666; font-size: 13px; cursor: pointer; display: block; margin-top: 15px; }
+        .forgot-link { color: #666; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 15px; display: block; }
+        
+        /* Stilovi za tvoj Main Menu koji se pojavi poslije logina */
+        #main-menu { width: 400px; }
+        .kat-btn { background: #333; border: 1px solid #444; margin: 5px; padding: 15px; cursor: pointer; border-radius: 8px; transition: 0.3s; }
+        .kat-btn:hover { background: var(--accent); }
     </style>
 </head>
 <body>
 
-<div id="login-screen" class="login-box">
-    <h2>REKVIZIT ARENA LOGIN</h2>
-    
-    <div id="auth-fields">
-        <input type="text" id="nick" placeholder="Nadimak" onblur="provjeriPostojanje()">
-        <input type="password" id="pass" placeholder="Lozinka">
-        <div id="secret-wrap" class="hidden">
-            <input type="password" id="secret" placeholder="Tajna šifra">
+    <div id="login-screen" class="box">
+        <h2>REKVIZIT ARENA LOGIN</h2>
+        
+        <div id="auth-fields">
+            <input type="text" id="nick" placeholder="Nadimak" onblur="provjeriPostojanje()">
+            <input type="password" id="pass" placeholder="Lozinka">
+            
+            <div id="secret-wrap" class="hidden">
+                <input type="password" id="secret" placeholder="Vaša Tajna Šifra">
+                <p style="font-size: 11px; color: #888;">Prva prijava? Izmislite vašu tajnu šifru.</p>
+            </div>
+
+            <button onclick="prijaviSe()">PRISTUPI</button>
+            <span class="forgot-link" onclick="prikaziReset()">Zaboravljena lozinka?</span>
         </div>
-        <button onclick="prijaviSe()">PRISTUPI</button>
-        <span class="forgot-link" onclick="prikaziReset()">Zaboravljena lozinka?</span>
+
+        <div id="reset-fields" class="hidden">
+            <p>Zahtjev za Admina</p>
+            <input type="text" id="reset-nick" placeholder="Nadimak">
+            <textarea id="reset-reason" placeholder="Što treba promijeniti?"></textarea>
+            <input type="password" id="reset-master" placeholder="Tvoja Tajna Šifra">
+            <button onclick="posaljiZahtjev()">POŠALJI ZAHTJEV</button>
+            <span class="forgot-link" onclick="nazadNaLogin()">Povratak na Login</span>
+        </div>
     </div>
 
-    <div id="reset-fields" class="hidden">
-        <h3>Oporavak</h3>
-        <input type="text" id="reset-nick" placeholder="Nadimak">
-        <textarea id="reset-reason" placeholder="Poruka..."></textarea>
-        <input type="password" id="reset-master" placeholder="Tajna šifra">
-        <button onclick="posaljiZahtjev()">POŠALJI</button>
-        <span class="forgot-link" onclick="nazadNaLogin()">Povratak</span>
+    <div id="main-menu" class="box hidden">
+        <h2 id="welcome-msg">MENU</h2>
+        <div class="kat-btn" onclick="startKviz('Sport')">SPORT</div>
+        <div class="kat-btn" onclick="startKviz('Geografija')">GEOGRAFIJA</div>
+        <div class="kat-btn" onclick="startKviz('Historija')">HISTORIJA</div>
+        <button onclick="odjava()" style="background:#444; margin-top:20px;">ODJAVA</button>
     </div>
-</div>
 
-<script>
-    const socket = io();
+    <script>
+        const socket = io();
 
-    function provjeriPostojanje() {
-        const nick = document.getElementById('nick').value;
-        if(nick) socket.emit('provjeri_postojanje', nick);
-    }
-
-    socket.on('odgovor_postojanja', (data) => {
-        document.getElementById('secret-wrap').className = data.postoji ? 'hidden' : '';
-    });
-
-    function prijaviSe() {
-        const nick = document.getElementById('nick').value;
-        const pass = document.getElementById('pass').value;
-        const secret = document.getElementById('secret').value;
-        if(!nick || !pass) return alert("Popunite polja!");
-        socket.emit('prijava', { nadimak: nick, lozinka: pass, tajna_sifra: secret });
-    }
-
-    function prikaziReset() {
-        document.getElementById('auth-fields').classList.add('hidden');
-        document.getElementById('reset-fields').classList.remove('hidden');
-    }
-
-    function nazadNaLogin() {
-        document.getElementById('reset-fields').classList.add('hidden');
-        document.getElementById('auth-fields').classList.remove('hidden');
-    }
-
-    function posaljiZahtjev() {
-        const nick = document.getElementById('reset-nick').value;
-        const poruka = document.getElementById('reset-reason').value;
-        const tajna = document.getElementById('reset-master').value;
-        if(tajna === "ARENA2026") {
-            socket.emit('posalji_zahtjev', { nadimak: nick, poruka: poruka });
-        } else {
-            alert("Pogrešna tajna šifra!");
+        function provjeriPostojanje() {
+            const nick = document.getElementById('nick').value;
+            if(nick) socket.emit('provjeri_postojanje', nick);
         }
-    }
 
-    socket.on('zahtjev_primljen', () => {
-        alert("Ukoliko su svi podaci ispravno upisani, administrator će odobriti vaš zahtjev kroz nekoliko sati. Također se možete javiti na profil Blanco.");
-        location.reload();
-    });
+        socket.on('odgovor_postojanja', (data) => {
+            const wrap = document.getElementById('secret-wrap');
+            if (!data.postoji) wrap.classList.remove('hidden');
+            else wrap.classList.add('hidden');
+        });
 
-    socket.on('prijavljen', (res) => {
-        alert("Dobrodošao " + res.nadimak);
-        // Ovdje ćemo u idućem koraku dodati otvaranje menu-a
-    });
+        function prijaviSe() {
+            const nick = document.getElementById('nick').value;
+            const pass = document.getElementById('pass').value;
+            const secret = document.getElementById('secret').value;
+            if(!nick || !pass) return alert("Unesite podatke!");
+            socket.emit('prijava', { nadimak: nick, lozinka: pass, tajna_sifra: secret });
+        }
 
-    socket.on('greska', (msg) => alert(msg));
-</script>
+        socket.on('prijavljen', (res) => {
+            // Sakrij Login, pokaži Menu
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-menu').classList.remove('hidden');
+            document.getElementById('welcome-msg').innerText = "DOBRODOŠAO, " + res.nadimak.toUpperCase();
+        });
 
+        function prikaziReset() {
+            document.getElementById('auth-fields').classList.add('hidden');
+            document.getElementById('reset-fields').classList.remove('hidden');
+        }
+
+        function nazadNaLogin() {
+            document.getElementById('reset-fields').classList.add('hidden');
+            document.getElementById('auth-fields').classList.remove('hidden');
+        }
+
+        function posaljiZahtjev() {
+            const nick = document.getElementById('reset-nick').value;
+            const msg = document.getElementById('reset-reason').value;
+            const tajna = document.getElementById('reset-master').value;
+            socket.emit('posalji_zahtjev', { nadimak: nick, poruka: msg, tajna: tajna });
+        }
+
+        socket.on('zahtjev_primljen', () => {
+            alert("Zahtjev poslan! Administrator će ga pregledati.");
+            nazadNaLogin();
+        });
+
+        socket.on('greska', (msg) => alert(msg));
+        
+        function odjava() { location.reload(); }
+        function startKviz(kat) { alert("Pokrećem: " + kat); }
+    </script>
 </body>
 </html>
