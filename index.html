@@ -1,25 +1,104 @@
-<div id="login-screen" class="container">
-    <h1>🏟️ Rekvizit Arena</h1>
-    <input type="text" id="nick" placeholder="Nadimak">
-    <input type="password" id="pass" placeholder="Lozinka">
-    <div id="secret-wrapper" class="hidden">
-        <input type="password" id="secret" placeholder="Tajna šifra (ARENA2026)">
-        <p style="color: #ff4d4d; font-size: 12px;">Novi ste? Unesite administratorsku šifru.</p>
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <title>Rekvizit Arena - Login</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        body { background: #121212; color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-box { background: #1a1a1a; padding: 30px; border: 2px solid #333; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.7); }
+        h2 { color: #00bfff; letter-spacing: 2px; margin-bottom: 20px; }
+        input, textarea { width: 100%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #444; color: #00bfff; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #00bfff; color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 6px; transition: 0.3s; }
+        button:hover { background: #008ecc; }
+        .forgot-link { color: #666; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 15px; display: block; }
+        .hidden { display: none; }
+        .info-msg { font-size: 12px; color: #aaa; margin-top: 10px; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen" class="login-box">
+        <h2>ARENA LOGIN</h2>
+        
+        <div id="auth-fields">
+            <input type="text" id="nick" placeholder="Nadimak" onblur="provjeriPostojanje()">
+            <input type="password" id="pass" placeholder="Lozinka">
+            
+            <div id="secret-wrap" class="hidden">
+                <input type="password" id="secret" placeholder="Tajna šifra (ARENA2026)">
+                <p class="info-msg">Prva prijava? Unesite tajnu šifru koju ste dobili.</p>
+            </div>
+
+            <button onclick="prijaviSe()">PRISTUPI</button>
+            <span class="forgot-link" onclick="prikaziReset()">Zaboravljena lozinka?</span>
+        </div>
+
+        <div id="reset-fields" class="hidden">
+            <p style="font-size: 14px;">Zahtjev za oporavak računa</p>
+            <input type="text" id="reset-nick" placeholder="Vaš nadimak">
+            <textarea id="reset-reason" rows="3" placeholder="Zaboravljena lozinka ili želite promjenu?"></textarea>
+            <input type="password" id="reset-master" placeholder="Tajna šifra">
+            <button onclick="posaljiZahtjev()">POŠALJI</button>
+            <span class="forgot-link" onclick="nazadNaLogin()">Nazad na prijavu</span>
+        </div>
     </div>
-    <button onclick="prijaviSe()">UĐI U ARENU</button>
-</div>
 
-<script>
-    // Dodano u script dio:
-    socket.on('otvori_tajnu_sifru', () => {
-        document.getElementById('secret-wrapper').classList.remove('hidden');
-        alert("Nadimak nije pronađen. Unesite tajnu šifru za registraciju.");
-    });
+    <script>
+        const socket = io();
 
-    function prijaviSe() {
-        const nick = document.getElementById('nick').value;
-        const pass = document.getElementById('pass').value;
-        const secret = document.getElementById('secret').value;
-        socket.emit('prijava', { nadimak: nick, lozinka: pass, tajna_sifra: secret });
-    }
-</script>
+        // Provjerava treba li prikazati polje za tajnu šifru (ako korisnik ne postoji u bazi)
+        function provjeriPostojanje() {
+            const nick = document.getElementById('nick').value;
+            if(nick) socket.emit('provjeri_postojanje', nick);
+        }
+
+        socket.on('odgovor_postojanja', (data) => {
+            const wrap = document.getElementById('secret-wrap');
+            if (!data.postoji) wrap.classList.remove('hidden');
+            else wrap.classList.add('hidden');
+        });
+
+        function prijaviSe() {
+            const nick = document.getElementById('nick').value;
+            const pass = document.getElementById('pass').value;
+            const secret = document.getElementById('secret').value;
+            socket.emit('prijava', { nadimak: nick, lozinka: pass, tajna_sifra: secret });
+        }
+
+        function prikaziReset() {
+            document.getElementById('auth-fields').classList.add('hidden');
+            document.getElementById('reset-fields').classList.remove('hidden');
+        }
+
+        function nazadNaLogin() {
+            document.getElementById('reset-fields').classList.add('hidden');
+            document.getElementById('auth-fields').classList.remove('hidden');
+        }
+
+        function posaljiZahtjev() {
+            const nick = document.getElementById('reset-nick').value;
+            const poruka = document.getElementById('reset-reason').value;
+            const tajna = document.getElementById('reset-master').value;
+
+            if (tajna === "ARENA2026") {
+                socket.emit('posalji_zahtjev', { nadimak: nick, poruka: poruka });
+            } else {
+                alert("Pogrešna tajna šifra!");
+            }
+        }
+
+        socket.on('zahtjev_primljen', () => {
+            alert("Ukoliko su svi podaci ispravno upisani, administrator će odobriti vaš zahtjev kroz nekoliko sati. Također se možete javiti na profil Blanco.");
+            nazadNaLogin();
+        });
+
+        socket.on('prijavljen', (res) => {
+            alert("Uspješna prijava! Dobrodošao " + res.nadimak);
+            // Ovdje ide preusmjeravanje na glavni izbornik
+        });
+
+        socket.on('greska', (msg) => alert(msg));
+    </script>
+</body>
+</html>
