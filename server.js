@@ -9,7 +9,7 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 // --- MONGO DB POVEZIVANJE ---
-mongoose.connect(process.env.MONGO_URI || 'TVOJ_MONGO_URI')
+mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("Povezan na MongoDB"))
     .catch(err => console.error("Greška s bazom:", err));
 
@@ -32,6 +32,9 @@ const SupportRequest = mongoose.model('SupportRequest', RequestSchema);
 
 app.use(express.static('.'));
 
+let trenutnoPitanje = null;
+let tajmerInterval = null;
+
 io.on('connection', (socket) => {
     
     // Provjera postoji li korisnik (za prikaz tajne šifre)
@@ -40,47 +43,42 @@ io.on('connection', (socket) => {
         socket.emit('odgovor_postojanja', { postoji: !!u });
     });
 
-    // Prijava i Registracija
     socket.on('prijava', async (data) => {
         let u = await User.findOne({ nadimak: data.nadimak });
 
         if (!u) {
-            // Prva prijava - provjera tajne šifre
-            if (data.tajna_sifra === "ARENA2026") { // Zamijeni sa svojom master šifrom
+            // Prva prijava - registracija
+            if (data.tajna_sifra === "ARENA2026") {
                 u = new User({ nadimak: data.nadimak, lozinka: data.lozinka });
                 await u.save();
-                socket.nadimak = u.nadimak;
-                socket.emit('prijavljen', { nadimak: u.nadimak });
+                prijaviIgraca(socket, u);
             } else {
                 socket.emit('greska', "Pogrešna tajna šifra za prvu registraciju!");
             }
         } else {
             // Postojeći korisnik
             if (u.lozinka === data.lozinka) {
-                socket.nadimak = u.nadimak;
-                socket.isShadowBanned = u.isShadowBanned;
-                socket.emit('prijavljen', { nadimak: u.nadimak });
+                prijaviIgraca(socket, u);
             } else {
                 socket.emit('greska', "Pogrešna lozinka!");
             }
         }
     });
 
-    // Slanje zahtjeva za reset (Administratoru)
     socket.on('posalji_zahtjev', async (data) => {
-        const noviZahtjev = new SupportRequest({
-            nadimak: data.nadimak,
-            poruka: data.poruka
-        });
+        const noviZahtjev = new SupportRequest({ nadimak: data.nadimak, poruka: data.poruka });
         await noviZahtjev.save();
         socket.emit('zahtjev_primljen');
     });
 
-    // Logika za odgovore (sa Shadowban provjerom)
-    socket.on('slanje_odgovora', async (odg) => {
-        if (socket.isShadowBanned) return; // Ignoriraj bodove ako je shadowbanned
-        // ... tvoja logika bodovanja ide ovdje ...
-    });
+    // Ostatak tvoje logike za kviz (iz starog server.js)
 });
 
-server.listen(3000, () => console.log("Arena v1.2.0 (Mongo) na portu 3000"));
+function prijaviIgraca(socket, user) {
+    socket.nadimak = user.nadimak;
+    socket.isShadowBanned = user.isShadowBanned;
+    socket.emit('prijavljen', { nadimak: user.nadimak });
+}
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Arena trči na portu ${PORT}`));
