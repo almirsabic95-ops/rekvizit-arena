@@ -9,23 +9,23 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// --- MONGO DB KONEKCIJA ---
 mongoose.connect(process.env.MONGO_URI).then(() => console.log("Arena 2.0 Povezana ✅"));
 
-// --- MODEL KORISNIKA (EKONOMIJA 2.0) ---
+// --- MODEL KORISNIKA ---
 const UserSchema = new mongoose.Schema({
     nadimak: { type: String, unique: true },
     lozinka: String,
-    bodovi: { type: Number, default: 0 },         // EXP (Tablica)
-    coinsi: { type: Number, default: 1000 },      // Valuta za trošenje
-    vauceri: { type: Number, default: 10 },       // "Zeleni novac"
+    tajna_sifra: String,
+    bodovi: { type: Number, default: 0 },         
+    coinsi: { type: Number, default: 1000 },      
+    vauceri: { type: Number, default: 10 },       
     bodoviMjesecno: { type: Number, default: 0 },
     zadnjiLogin: { type: Date, default: new Date(0) },
     zadnjiSpin: { type: Date, default: new Date(0) },
     bedzevi: [String],
-    statusKartice: { type: String, default: 'standard' }, // standard / gladijator
+    statusKartice: { type: String, default: 'standard' }, 
     bojaNadima: { type: String, default: '#ffffff' },
-    aktivniOkvir: { type: String, default: 'none' }
+    avatar: { type: String, default: 'https://i.imgur.com/6VBx3io.png' }
 });
 const User = mongoose.model('User', UserSchema);
 
@@ -33,20 +33,18 @@ app.use(express.static('.'));
 
 let onlineKorisnici = {}; 
 
-// --- AUTOMATSKI RESETI ---
+// Automatski reset mjesečne tablice
 cron.schedule('0 0 1 * *', async () => {
     await User.updateMany({}, { bodoviMjesecno: 0 });
-    console.log("Mjesečna tablica resetirana.");
 });
 
-// --- SOCKET LOGIKA ---
 io.on('connection', (socket) => {
     
     socket.on('prijava', async (data) => {
         let u = await User.findOne({ nadimak: data.nadimak });
-        if (u && u.lozinka === data.lozinka) {
-            
-            // Daily Login Bonus (500 Coinsa)
+        
+        if (u && u.lozinka === data.lozinka && u.tajna_sifra === data.tajna_sifra) {
+            // Daily Login Bonus
             const danas = new Date().toDateString();
             if (u.zadnjiLogin.toDateString() !== danas) {
                 u.coinsi += 500;
@@ -59,16 +57,17 @@ io.on('connection', (socket) => {
             onlineKorisnici[socket.id] = u;
             socket.emit('prijavljen', u);
             io.emit('osvezi_listu', Object.values(onlineKorisnici));
+        } else {
+            socket.emit('greska', "Pogrešni podaci!");
         }
     });
 
-    // Kolo Sreće (Balansirano)
     socket.on('zavrti_kolo', async () => {
         let u = await User.findOne({ nadimak: socket.nadimak });
         const razlika = (new Date() - u.zadnjiSpin) / (1000 * 60 * 60);
 
         if (razlika >= 12) {
-            const nagrade = [100, 100, 100, 200, 200, 500, 500, 1000, 5000];
+            const nagrade = [100, 100, 100, 200, 200, 300, 500, 500, 1000, 5000];
             const dobiveno = nagrade[Math.floor(Math.random() * nagrade.length)];
             u.coinsi += dobiveno;
             u.zadnjiSpin = new Date();
@@ -79,17 +78,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // Knjiga Kolekcionara
-    socket.on('dohvati_kolekciju', async () => {
-        let u = await User.findOne({ nadimak: socket.nadimak });
-        const kolekcija = [
-            { id: 'gladijator', naziv: 'Gladijator', uvjet: '5000 EXP', opis: 'Dobivaš oklop i zlatni profil.' },
-            { id: 'munja', naziv: 'Munja', uvjet: 'Odgovor < 2s', opis: 'Efekt munje oko imena.' }
-        ];
-        socket.emit('vratka_kolekcije', { kolekcija, osvojeno: u.bedzevi });
-    });
-
-    // 1vs1 Izolacija
     socket.on('izazovi', (koga) => {
         const target = Object.keys(onlineKorisnici).find(id => onlineKorisnici[id].nadimak === koga);
         if (target) io.to(target).emit('izazov_stigao', { od: socket.nadimak });
@@ -111,4 +99,4 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(10000, () => console.log("Arena 2.0 spremna!"));
+server.listen(10000, () => console.log("Server online!"));

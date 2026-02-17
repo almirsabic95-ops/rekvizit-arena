@@ -2,101 +2,105 @@
 <html lang="hr">
 <head>
     <meta charset="UTF-8">
-    <title>Rekvizit Arena 2.0</title>
+    <title>Rekvizit Arena</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { --accent: #00bfff; --gold: #ffd700; --bg: #0a0a0a; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; }
+        :root { --accent: #00bfff; --gold: #ffd700; --bg: #0d0d0d; }
+        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; display: flex; height: 100vh; }
         
-        /* Layout */
-        #sidebar { width: 300px; background: #111; border-right: 1px solid #333; overflow-y: auto; }
-        #main { flex-grow: 1; display: flex; flex-direction: column; }
-        #top-bar { background: #000; padding: 15px; display: flex; justify-content: space-around; border-bottom: 2px solid var(--accent); }
+        #sidebar { width: 300px; background: #151515; border-right: 1px solid #333; display: flex; flex-direction: column; }
+        #main { flex-grow: 1; display: flex; flex-direction: column; position: relative; }
+        
+        #top-bar { background: #000; padding: 10px; display: flex; justify-content: space-around; border-bottom: 2px solid var(--accent); }
+        
+        /* Kartice i Gladijator izgled */
+        .user-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; }
+        .user-item:hover { background: #222; }
+        .kartica-gladijator { background: linear-gradient(45deg, #300, #600) !important; border: 1px solid var(--gold) !important; }
 
-        /* Kartice i Efekti */
-        .user-item { padding: 15px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; transition: 0.3s; }
-        .kartica-gladijator { 
-            background: linear-gradient(45deg, #2a0505, #630a0a); 
-            border: 2px solid var(--gold) !important; 
-            box-shadow: inset 0 0 15px rgba(255,215,0,0.3);
-        }
-        .avatar-wrap { position: relative; width: 45px; height: 45px; margin-right: 15px; }
-        .avatar-img { width: 100%; height: 100%; border-radius: 50%; border: 2px solid #444; }
-        .oklop-overlay { position: absolute; top: -5px; left: -5px; width: 55px; height: 55px; background: url('https://i.imgur.com/your-helmet-icon.png') no-repeat center; background-size: contain; pointer-events: none; }
+        .avatar-wrap { position: relative; width: 40px; height: 40px; margin-right: 12px; }
+        .avatar-img { width: 100%; height: 100%; border-radius: 50%; border: 1px solid #555; }
+        .oklop-overlay { position: absolute; top: -5px; left: -5px; width: 50px; height: 50px; background: url('https://i.imgur.com/VaD7X6M.png'); background-size: contain; pointer-events: none; }
 
         /* Modali */
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; padding: 30px; border: 2px solid var(--accent); z-index: 1000; display: none; border-radius: 15px; text-align: center; }
-        .overlay-duel { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; display:none; justify-content:center; align-items:center; }
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; padding: 25px; border: 2px solid var(--accent); z-index: 1000; display: none; text-align: center; border-radius: 10px; }
+        .overlay-duel { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:9999; display:none; justify-content:center; align-items:center; flex-direction: column; }
         
         .hidden { display: none !important; }
-        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px; }
+        .btn { padding: 8px 15px; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; }
         .btn-gold { background: var(--gold); color: #000; }
+        input { padding: 10px; background: #000; border: 1px solid #333; color: white; border-radius: 5px; width: 80%; }
     </style>
 </head>
 <body>
 
     <div id="duel-anim" class="overlay-duel">
-        <h1 style="font-size: 80px; animation: hit 0.5s infinite alternate;">⚔️</h1>
-        <h2 style="color:red;">DUEL POČINJE!</h2>
+        <h1 style="font-size: 100px; margin: 0;">⚔️</h1>
+        <h2 style="color:red; letter-spacing: 5px;">DUEL POČINJE!</h2>
     </div>
 
     <div id="wheel-modal" class="modal">
-        <h2 style="color:var(--gold);">KOLO SREĆE</h2>
-        <div id="wheel-icon" style="font-size: 60px; margin: 20px;">🎡</div>
-        <button class="btn btn-gold" onclick="spinWheel()" id="spin-btn">ZAVRTI (BESPLATNO)</button>
-        <button class="btn" onclick="toggleModal('wheel-modal', false)">Zatvori</button>
-    </div>
-
-    <div id="kolekcija-modal" class="modal" style="width: 60%;">
-        <h2>KNJIGA KOLEKCIONARA</h2>
-        <div id="kolekcija-grid" style="display:grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top:20px;"></div>
-        <button class="btn" onclick="toggleModal('kolekcija-modal', false)" style="margin-top:20px;">Zatvori</button>
+        <h3>KOLO SREĆE</h3>
+        <div id="wheel-icon" style="font-size: 60px; margin: 15px;">🎡</div>
+        <button class="btn btn-gold" onclick="spinWheel()" id="spin-btn">ZAVRTI (BESPLATNO)</button><br><br>
+        <button onclick="zatvoriModal('wheel-modal')" style="background:none; color:gray; border:none; cursor:pointer;">Zatvori</button>
     </div>
 
     <div id="sidebar">
-        <div style="padding: 10px;">
-            <button class="btn btn-gold" style="width:100%" onclick="toggleModal('wheel-modal', true)">🎡 KOLO SREĆE</button>
-            <button class="btn" style="width:100%; background: #333; color:white;" onclick="openKolekcija()">📚 KOLEKCIJA</button>
+        <div style="padding: 15px; border-bottom: 1px solid #333; text-align: center;">
+            <button class="btn btn-gold" onclick="otvoriModal('wheel-modal')">🎡 KOLO SREĆE</button>
         </div>
         <div id="user-list"></div>
     </div>
 
     <div id="main">
-        <div id="top-bar">
+        <div id="top-bar" class="hidden">
             <span>🏆 EXP: <b id="val-exp">0</b></span>
             <span>💰 COINSI: <b id="val-coins" style="color:var(--gold)">0</b></span>
             <span>🎟️ VAUČERI: <b id="val-vauc" style="color: #0f0">0</b></span>
         </div>
 
-        <div id="login-screen" style="text-align:center; padding-top:100px;">
-            <h1>REKVIZIT ARENA</h1>
-            <input type="text" id="nick" placeholder="Nadimak"><br><br>
-            <input type="password" id="pass" placeholder="Lozinka"><br><br>
-            <button class="btn btn-gold" onclick="prijaviSe()">ULAZ U ARENU</button>
+        <div id="login-screen" style="text-align: center; padding-top: 80px;">
+            <h1 style="color: var(--accent);">REKVIZIT ARENA</h1>
+            <div style="background: #151515; padding: 30px; display: inline-block; border-radius: 10px; border: 1px solid #333; width: 300px;">
+                <input type="text" id="nick" placeholder="Nadimak"><br><br>
+                <input type="password" id="pass" placeholder="Lozinka"><br><br>
+                <input type="password" id="secret" placeholder="Tajna šifra"><br><br>
+                <button class="btn btn-gold" style="width: 100%; padding: 12px;" onclick="prijaviSe()">PRISTUPI ARENI</button>
+                <p style="font-size: 12px; margin-top: 15px;">
+                    <a href="#" onclick="alert('Kontaktiraj Admina za reset!')" style="color: var(--accent); text-decoration: none;">Zaboravljena lozinka?</a>
+                </p>
+            </div>
         </div>
 
-        <div id="game-screen" class="hidden" style="text-align:center; padding-top:50px;">
+        <div id="game-screen" class="hidden" style="text-align: center; padding-top: 50px;">
             <h2 id="pitanje-tekst">Čekam novo pitanje...</h2>
-            <input type="text" id="odgovor-in" placeholder="Tvoj odgovor..." style="padding:15px; width:60%; font-size:20px;">
+            <input type="text" id="odgovor-in" placeholder="Upiši odgovor..." style="width: 60%; font-size: 18px;">
         </div>
     </div>
 
     <script>
         const socket = io();
 
-        function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'block' : 'none'; }
+        function otvoriModal(id) { document.getElementById(id).style.display = 'block'; }
+        function zatvoriModal(id) { document.getElementById(id).style.display = 'none'; }
 
         function prijaviSe() {
-            socket.emit('prijava', { nadimak: document.getElementById('nick').value, lozinka: document.getElementById('pass').value });
+            socket.emit('prijava', { 
+                nadimak: document.getElementById('nick').value, 
+                lozinka: document.getElementById('pass').value,
+                tajna_sifra: document.getElementById('secret').value
+            });
         }
 
         socket.on('prijavljen', (u) => {
             document.getElementById('login-screen').classList.add('hidden');
             document.getElementById('game-screen').classList.remove('hidden');
-            updateStats(u);
+            document.getElementById('top-bar').classList.remove('hidden');
+            osveziStats(u);
         });
 
-        function updateStats(u) {
+        function osveziStats(u) {
             document.getElementById('val-exp').innerText = u.bodovi;
             document.getElementById('val-coins').innerText = u.coinsi;
             document.getElementById('val-vauc').innerText = u.vauceri;
@@ -115,7 +119,7 @@
                     </div>
                     <div>
                         <div style="font-weight:bold; color:${u.bojaNadima}">${u.statusKartice === 'gladijator' ? '🛡️ ' : ''}${u.nadimak}</div>
-                        <div style="font-size:12px; color:#aaa;">${u.bodovi} EXP</div>
+                        <div style="font-size:11px; color:#888;">${u.bodovi} EXP</div>
                     </div>
                 `;
                 item.onclick = () => { if(confirm("Izazovi " + u.nadimak + "?")) socket.emit('izazovi', u.nadimak); };
@@ -132,25 +136,10 @@
         socket.on('kolo_rezultat', (data) => {
             setTimeout(() => {
                 document.getElementById('wheel-icon').style.animation = "none";
-                alert(`DOBITAK: ${data.iznos} 💰`);
+                alert(`OSVOJENO: ${data.iznos} 💰`);
                 document.getElementById('val-coins').innerText = data.novoStanje;
-                toggleModal('wheel-modal', false);
+                zatvoriModal('wheel-modal');
             }, 2000);
-        });
-
-        // KOLEKCIJA
-        function openKolekcija() {
-            socket.emit('dohvati_kolekciju');
-            toggleModal('kolekcija-modal', true);
-        }
-
-        socket.on('vratka_kolekcije', (data) => {
-            const grid = document.getElementById('kolekcija-grid');
-            grid.innerHTML = data.kolekcija.map(p => `
-                <div style="background:#222; padding:10px; border-radius:5px; opacity:${data.osvojeno.includes(p.naziv) ? '1' : '0.4'}">
-                    <b>${p.naziv}</b><br><small>${p.uvjet}</small>
-                </div>
-            `).join('');
         });
 
         socket.on('start_duel_efekt', () => {
@@ -159,8 +148,17 @@
             setTimeout(() => { anim.style.display = 'none'; }, 3000);
         });
 
+        socket.on('izazov_stigao', (data) => {
+            if(confirm(data.od + " te izaziva! Prihvaćaš?")) socket.emit('prihvati_duel', data.od);
+        });
+
         socket.on('obavijest', (msg) => alert(msg));
         socket.on('greska', (msg) => alert(msg));
     </script>
+
+    <style>
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes hit { from { transform: scale(1); } to { transform: scale(1.2); } }
+    </style>
 </body>
 </html>
