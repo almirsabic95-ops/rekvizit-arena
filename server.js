@@ -3,122 +3,106 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
-const cron = require('node-cron');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-mongoose.connect(process.env.MONGO_URI).then(() => console.log("Arena 2.0 Povezana ✅"));
+mongoose.connect(process.env.MONGO_URI).then(() => console.log("Cisco & AI Arena Spremna ✅"));
 
-// --- MODEL KORISNIKA (Sačuvani bodovi + Nova polja) ---
 const UserSchema = new mongoose.Schema({
     nadimak: { type: String, unique: true },
     lozinka: String,
-    tajna_sifra: String,
+    tajna_sifra: { type: String, default: "" },
     bodovi: { type: Number, default: 0 },         
-    coinsi: { type: Number, default: 1000 },      
+    coinsi: { type: Number, default: 1000 },
+    ciscoBodovi: { type: Number, default: 0 }, 
     vauceri: { type: Number, default: 10 },
-    pobjede1vs1: { type: Number, default: 0 },
-    ukupnoTocnih: { type: Number, default: 0 },
-    bedzevi: { type: [String], default: [] },
-    aktivniBedz: { type: String, default: 'standard' },
-    zadnjiLogin: { type: Date, default: new Date(0) },
-    zadnjiSpin: { type: Date, default: new Date(0) },
     avatar: { type: String, default: 'https://i.imgur.com/6VBx3io.png' }
 });
 const User = mongoose.model('User', UserSchema);
 
 app.use(express.static('.'));
 
-let onlineKorisnici = {}; 
-let trenutnoPitanje = null;
-
-// --- AUTOMATSKI KVIZ (Vrti se stalno) ---
+// --- MASOVNA BAZA PITANJA PO TEČAJEVIMA ---
 const pitanjaBaza = [
-    { p: "Koji je glavni grad Bosne i Hercegovine?", o: "Sarajevo" },
-    { p: "Koja je najveća planeta u Sunčevom sistemu?", o: "Jupiter" },
-    { p: "Koliko kontinenata postoji na Zemlji?", o: "7" },
-    { p: "Koji element ima simbol 'O' u periodnom sistemu?", o: "Kisik" }
+    // MODERN AI & GEN AI
+    { p: "Što kratica LLM znači u svijetu umjetne inteligencije?", o: "Large Language Model", kat: "AI" },
+    { p: "Kako se naziva proces 'učenja' AI modela na velikim skupovima podataka?", o: "Trening", kat: "AI" },
+    { p: "Koji tip AI-a stvara novi sadržaj poput slika ili teksta?", o: "Generativni AI", kat: "GenAI" },
+    { p: "Kako se zove upit koji šaljemo Generativnom AI-u?", o: "Prompt", kat: "GenAI" },
+    // CISCO PACKET TRACER
+    { p: "Koji mod u Packet Traceru omogućuje promatranje putovanja paketa korak po korak?", o: "Simulation", kat: "PacketTracer" },
+    { p: "Koji kabel koristimo za direktno spajanje dva PC-a bez switcha?", o: "Crossover", kat: "PacketTracer" },
+    { p: "Ekstenzija datoteke spremljene u Cisco Packet Traceru je?", o: "PKT", kat: "PacketTracer" },
+    // SUSTAINABILITY & IT
+    { p: "Kako se naziva praksa smanjenja ekološkog otiska u IT sektoru?", o: "Green IT", kat: "Održivost" },
+    { p: "Koji termin opisuje kružni ciklus ponovne uporabe IT opreme?", o: "Recikliranje", kat: "Održivost" },
+    // OS & HARDWARE (Computer/Mobile Devices)
+    { p: "Koji je najpopularniji operacijski sustav otvorenog koda za mobilne uređaje?", o: "Android", kat: "Mobile" },
+    { p: "Što je 'Safe Mode' u operacijskim sustavima?", o: "Siguran način rada", kat: "OS" },
+    { p: "Kratica za ekran osjetljiv na dodir je?", o: "Touchscreen", kat: "Mobile" },
+    // DIGITAL AWARENESS & REPORTS
+    { p: "Kako se naziva neželjena elektronička pošta koja često sadrži viruse?", o: "Spam", kat: "Digital" },
+    { p: "Koji vizualni element najbolje prikazuje trendove u izvještajima?", o: "Grafikon", kat: "Izvještaji" },
+    { p: "Što znači kratica PDF?", o: "Portable Document Format", kat: "Izvještaji" },
+    // NETWORK BASICS (Ponavljanje i proširenje)
+    { p: "Koja je MAC adresa duga (broj bita)?", o: "48", kat: "Network" },
+    { p: "Koji protokol se koristi za prijenos datoteka?", o: "FTP", kat: "Network" },
+    { p: "Koji uređaj spaja različite mreže?", o: "Router", kat: "Network" }
 ];
+
+let trenutnoPitanje = null;
 
 function novoPitanje() {
     trenutnoPitanje = pitanjaBaza[Math.floor(Math.random() * pitanjaBaza.length)];
-    io.emit('novo_pitanje', { tekst: trenutnoPitanje.p });
+    io.emit('novo_pitanje', { tekst: trenutnoPitanje.p, kategorija: trenutnoPitanje.kat });
 }
-setInterval(novoPitanje, 30000); // Svakih 30s novo pitanje
-setTimeout(novoPitanje, 5000);
-
-// FUNKCIJA ZA PROVJERU KARTICA/POSTIGNUĆA
-async function provjeriPostignuca(u, socket) {
-    let osvojeno = false;
-    const uvjeti = [
-        { ime: "Gladijator", uvjet: u.pobjede1vs1 >= 50 },
-        { ime: "Enciklopedija", uvjet: u.ukupnoTocnih >= 100 },
-        { ime: "Milijunaš", uvjet: u.coinsi >= 100000 },
-        { ime: "Veteran", uvjet: u.bodovi >= 5000 }
-    ];
-
-    uvjeti.forEach(item => {
-        if (item.uvjet && !u.bedzevi.includes(item.ime)) {
-            u.bedzevi.push(item.ime);
-            u.aktivniBedz = item.ime;
-            osvojeno = true;
-            io.emit('chat_broadcast', { od: "SISTEM", tekst: `🌟 ${u.nadimak} je osvojio karticu: ${item.ime}!`, tip: 'global' });
-        }
-    });
-    if (osvojeno) await u.save();
-}
+setInterval(novoPitanje, 20000); // Brži tempo za Blanco vježbu
 
 io.on('connection', (socket) => {
-    socket.on('prijava', async (data) => {
+    socket.on('provjeri_korisnika', async (data) => {
         let u = await User.findOne({ nadimak: data.nadimak });
-        if (u && u.lozinka === data.lozinka && u.tajna_sifra === data.tajna_sifra) {
-            const danas = new Date().toDateString();
-            if (u.zadnjiLogin.toDateString() !== danas) {
-                u.coinsi += 500; u.zadnjiLogin = new Date(); await u.save();
-                socket.emit('obavijest', "Dnevni bonus: +500 💰");
-            }
-            socket.nadimak = u.nadimak;
-            onlineKorisnici[socket.id] = u;
-            socket.emit('prijavljen', u);
-            if(trenutnoPitanje) socket.emit('novo_pitanje', { tekst: trenutnoPitanje.p });
-            io.emit('osvezi_listu', Object.values(onlineKorisnici));
-        } else { socket.emit('greska', "Pogrešni podaci!"); }
+        if (!u) { 
+            socket.emit('novi_igrac_registracija'); 
+        } else if (u.lozinka === data.lozinka) { 
+            socket.nadimak = u.nadimak; 
+            socket.emit('prijavljen', u); 
+            if(trenutnoPitanje) socket.emit('novo_pitanje', { tekst: trenutnoPitanje.p, kategorija: trenutnoPitanje.kat }); 
+        } else { 
+            socket.emit('greska', "Pogrešna lozinka!"); 
+        }
+    });
+
+    socket.on('registruj_novog', async (data) => {
+        try {
+            let u = new User({ nadimak: data.nadimak, lozinka: data.lozinka, tajna_sifra: data.tajna_sifra });
+            await u.save();
+            socket.nadimak = u.nadimak; socket.emit('prijavljen', u);
+        } catch(e) { socket.emit('greska', "Nadimak zauzet!"); }
     });
 
     socket.on('slanje_odgovora', async (data) => {
         if (trenutnoPitanje && data.odgovor.toLowerCase() === trenutnoPitanje.o.toLowerCase()) {
             let u = await User.findOne({ nadimak: socket.nadimak });
-            u.ukupnoTocnih += 1; u.coinsi += 50; u.bodovi += 10;
+            
+            // Svi tečajevi idu u Cisco Bodove (izolirano od coinsa po želji)
+            u.ciscoBodovi += 50;
             await u.save();
-            io.emit('chat_broadcast', { od: "SISTEM", tekst: `✅ ${socket.nadimak} je pogodio! (+50 💰)`, tip: 'global' });
-            await provjeriPostignuca(u, socket);
+            
+            socket.emit('update_stats', { bodovi: u.bodovi, coinsi: u.coinsi, ciscoBodovi: u.ciscoBodovi });
+            io.emit('chat_broadcast', { od: "SISTEM", tekst: `🎓 ${socket.nadimak} je riješio ${trenutnoPitanje.kat} pitanje!`, tip: 'global' });
             novoPitanje();
         }
     });
 
     socket.on('zavrti_kolo', async () => {
         let u = await User.findOne({ nadimak: socket.nadimak });
-        const nagrade = [100, 200, 500, 1000, 100, 5000, 200, 100];
+        const nagrade = [100, 200, 500, 1000, 150, 300, 5000, 50];
         const idx = Math.floor(Math.random() * nagrade.length);
-        u.coinsi += nagrade[idx]; u.zadnjiSpin = new Date(); await u.save();
+        u.coinsi += nagrade[idx]; await u.save();
         socket.emit('kolo_rezultat', { index: idx, iznos: nagrade[idx], novoStanje: u.coinsi });
-    });
-
-    socket.on('chat_global', (msg) => {
-        io.emit('chat_broadcast', { od: socket.nadimak, tekst: msg, tip: 'global' });
-    });
-
-    socket.on('pogledaj_profil', async (nad) => {
-        let u = await User.findOne({ nadimak: nad });
-        socket.emit('prikaz_profila', u);
-    });
-
-    socket.on('disconnect', () => {
-        delete onlineKorisnici[socket.id];
-        io.emit('osvezi_listu', Object.values(onlineKorisnici));
     });
 });
 
-server.listen(10000, () => console.log("Arena Online!"));
+server.listen(10000);

@@ -2,194 +2,163 @@
 <html lang="hr">
 <head>
     <meta charset="UTF-8">
-    <title>Rekvizit Arena 2.0</title>
+    <title>Rekvizit Arena - Multi-Tečaj Mod</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { --accent: #00bfff; --gold: #ffd700; --bg: #0d0d0d; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        
-        #sidebar { width: 300px; background: #151515; border-right: 1px solid #333; display: flex; flex-direction: column; }
-        #main { flex-grow: 1; display: flex; flex-direction: column; }
-        
-        #nav-menu { background: #000; display: flex; border-bottom: 2px solid var(--accent); }
-        .nav-item { padding: 15px; cursor: pointer; flex: 1; text-align: center; font-weight: bold; }
-        .nav-item:hover { background: #222; }
-
-        /* KARTICE STILOVI */
-        .user-item { padding: 12px; border-bottom: 1px solid #222; cursor: pointer; display: flex; align-items: center; position: relative; }
-        .kartica-Gladijator { background: linear-gradient(90deg, #400, #800) !important; border-left: 4px solid var(--gold); }
-        .kartica-Enciklopedija { background: linear-gradient(90deg, #002, #005) !important; border-left: 4px solid #0f0; }
-        .kartica-Milijunaš { background: linear-gradient(90deg, #220, #440) !important; border-left: 4px solid var(--gold); }
-
-        /* KOLO SREĆE VIZUALNO */
-        #wheel-container { position: relative; width: 280px; height: 280px; margin: 20px auto; border-radius: 50%; border: 8px solid var(--gold); transition: transform 4s cubic-bezier(0.1, 0, 0.2, 1); }
-        .wheel-part { position: absolute; width: 50%; height: 50%; transform-origin: 100% 100%; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-weight: bold; background: #333; }
-
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; padding: 20px; border: 2px solid var(--accent); z-index: 1000; display: none; border-radius: 15px; text-align: center; min-width: 320px; }
+        :root { --accent: #00bfff; --gold: #ffd700; --bg: #0d0d0d; --cisco: #049fd9; --ai: #9b59b6; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; text-align: center; }
         .hidden { display: none !important; }
-        input { padding: 12px; background: #000; border: 1px solid #333; color: white; border-radius: 5px; width: 80%; }
-        .btn { padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; font-weight: bold; }
-        .btn-gold { background: var(--gold); color: black; }
-        #chat-box { flex-grow: 1; overflow-y: auto; padding: 15px; background: #080808; }
+        
+        .nav-bar { background: #000; padding: 10px; border-bottom: 2px solid var(--accent); display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .nav-btn { background: #222; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 5px; font-weight: bold; font-size: 11px; }
+        .nav-btn:hover { background: var(--accent); }
+
+        /* DINAMIČKE BOJE KATEGORIJA */
+        .tag { display: inline-block; padding: 5px 15px; border-radius: 5px; font-size: 12px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
+        .tag-AI, .tag-GenAI { background: var(--ai); }
+        .tag-PacketTracer, .tag-Network { background: var(--cisco); }
+        .tag-Održivost { background: #2ecc71; }
+        .tag-OS, .tag-Hardware, .tag-Mobile { background: #3498db; }
+        .tag-Digital, .tag-Izvještaji { background: #f1c40f; color: black; }
+
+        .stats-bar { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 1px solid #333; flex-wrap: wrap; gap: 10px; }
+        .cisco-score { color: var(--cisco); font-size: 1.3em; font-weight: bold; padding: 0 10px; border: 1px solid #333; border-radius: 5px; }
+
+        #question-box { padding: 40px 20px; min-height: 250px; }
+        input { padding: 15px; background: #000; border: 1px solid #333; color: white; width: 80%; max-width: 400px; border-radius: 5px; font-size: 18px; margin-top: 20px; border-bottom: 3px solid var(--accent); outline: none; }
+        
+        /* KOLO MODAL */
+        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; padding: 25px; border: 2px solid var(--accent); border-radius: 15px; z-index: 100; box-shadow: 0 0 50px rgba(0,0,0,0.9); }
+        #wheel { width: 260px; height: 260px; border-radius: 50%; border: 4px solid white; position: relative; overflow: hidden; transition: transform 4s cubic-bezier(0.1, 0, 0.2, 1); margin: 15px auto; }
+        .segment { position: absolute; width: 50%; height: 50%; transform-origin: 100% 100%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div id="wheel-modal" class="modal">
-        <h2 style="color:var(--gold)">KOLO SREĆE</h2>
-        <div id="wheel-container"></div>
-        <button class="btn btn-gold" id="spin-btn" onclick="startSpin()">ZAVRTI</button>
-        <button onclick="zatvoriModal('wheel-modal')" style="background:none; color:gray; border:none; display:block; margin: 10px auto;">Zatvori</button>
-    </div>
-
-    <div id="kolekcija-modal" class="modal" style="width: 400px;">
-        <h2 style="color:var(--gold)">📚 MOJA KOLEKCIJA</h2>
-        <div id="kolekcija-lista" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;"></div>
-        <button class="btn" onclick="zatvoriModal('kolekcija-modal')">Zatvori</button>
-    </div>
-
-    <div id="profil-modal" class="modal">
-        <div id="profil-sadrzaj"></div>
-        <button class="btn" onclick="zatvoriModal('profil-modal')">Zatvori</button>
-    </div>
-
-    <div id="sidebar">
-        <div style="padding: 15px; text-align: center; border-bottom: 1px solid #333;">
-            <button class="btn btn-gold" onclick="otvoriModal('wheel-modal')">🎡 KOLO SREĆE</button><br><br>
-            <button class="btn" onclick="otvoriKolekciju()" style="background:#333; color:white; width:100%">📚 KOLEKCIJA</button>
+    <div id="login-screen" style="padding-top: 80px;">
+        <h1 style="letter-spacing: 5px;">REKVIZIT ARENA</h1>
+        <p style="color:var(--cisco)">ACADEMY EDITION</p>
+        <div id="prijava-box" style="margin-top: 30px;">
+            <input type="text" id="nick" placeholder="Nadimak"><br>
+            <input type="password" id="pass" placeholder="Lozinka"><br>
+            <button class="nav-btn" onclick="pokusajPrijavu()" style="width:80%; max-width:400px; margin-top:15px; background:var(--gold); color:black; font-size:16px;">PRISTUPI</button>
         </div>
-        <div id="user-list"></div>
+        <div id="secret-box" class="hidden">
+            <h3 style="color:var(--accent)">PRVA PRIJAVA: Postavi tajnu šifru</h3>
+            <input type="password" id="secret" placeholder="Tajna šifra"><br>
+            <button class="nav-btn" onclick="zavrsiRegistraciju()" style="width:80%; max-width:400px;">ZAVRŠI</button>
+        </div>
     </div>
 
-    <div id="main">
-        <div id="nav-menu" class="hidden">
-            <div class="nav-item" onclick="skoci('game')">ARENA</div>
-            <div class="nav-item" onclick="skoci('shop')">SHOP</div>
-            <div class="nav-item" onclick="location.reload()" style="color:red">ODJAVA</div>
+    <div id="main-screen" class="hidden">
+        <div class="nav-bar">
+            <button class="nav-btn" onclick="switchTab('arena')">ARENA</button>
+            <button class="nav-btn" onclick="switchTab('shop')">SHOP</button>
+            <button class="nav-btn" onclick="otvoriKolo()">🎡 KOLO SREĆE</button>
+            <button class="nav-btn" onclick="location.reload()" style="color:red">ODJAVA</button>
         </div>
 
-        <div id="top-bar" style="background:#000; padding:10px; display:flex; justify-content:space-around; border-bottom:1px solid #222;" class="hidden">
-            <span>🏆 EXP: <b id="val-exp">0</b></span>
-            <span>💰 COINSI: <b id="val-coins" style="color:var(--gold)">0</b></span>
+        <div class="stats-bar">
+            <span>🏆 EXP: <b id="stat-bodovi">0</b></span>
+            <span>💰 COINS: <b id="stat-coins">0</b></span>
+            <span class="cisco-score">🎓 CISCO XP: <b id="stat-cisco">0</b></span>
         </div>
 
-        <div id="login-screen" style="text-align: center; padding-top: 100px;">
-            <h1>REKVIZIT ARENA</h1>
-            <div style="background:#151515; padding:25px; display:inline-block; border-radius:10px; width:280px; border:1px solid #333;">
-                <input type="text" id="nick" placeholder="Nadimak"><br><br>
-                <input type="password" id="pass" placeholder="Lozinka"><br><br>
-                <input type="password" id="secret" placeholder="Tajna šifra"><br><br>
-                <button class="btn btn-gold" style="width:100%" onclick="prijaviSe()">PRISTUPI</button>
+        <div id="arena-tab">
+            <div id="question-box">
+                <div id="kat-tag" class="tag">KATEGORIJA</div>
+                <h2 id="pitanje-tekst">Učitavanje sljedećeg izazova...</h2>
+                <input type="text" id="odgovor-in" onkeypress="handleEnter(event)" placeholder="Upiši odgovor...">
             </div>
+            <div id="chat-box" style="background:#080808; padding:15px; height:150px; overflow-y:auto; text-align:left; font-size:14px; border-top:1px solid #222;"></div>
         </div>
 
-        <div id="game-area" class="hidden" style="display:flex; flex-direction:column; height:100%">
-            <div style="padding:30px; text-align:center; background:#111;">
-                <h2 id="pitanje-tekst" style="color:var(--accent)">Čekam pitanje...</h2>
-                <input type="text" id="odgovor-in" onkeypress="handleEnter(event)" placeholder="Upiši odgovor i pritisni Enter">
-            </div>
-            <div id="chat-box"></div>
-            <div style="padding:10px; background:#000;">
-                <input type="text" id="chat-msg" onkeypress="handleChat(event)" placeholder="Napiši poruku..." style="width:95%">
-            </div>
+        <div id="shop-tab" class="hidden" style="padding:50px;">
+            <h2>USKORO U ARENI</h2>
+            <p>Shop za zamjenu Coinsa za bedževe tečajeva.</p>
         </div>
+    </div>
+
+    <div id="wheel-modal" class="modal hidden">
+        <div id="wheel"></div>
+        <button class="nav-btn" onclick="socket.emit('zavrti_kolo')" style="background:var(--gold); color:black; width:100%; font-size:16px;">ZAVRTI</button>
+        <button onclick="zatvoriModal('wheel-modal')" style="background:none; border:none; color:gray; cursor:pointer; margin-top:10px;">Zatvori</button>
     </div>
 
     <script>
         const socket = io();
-        let mojUser = null;
-        const nagradeKola = [100, 200, 500, 1000, 100, 5000, 200, 100];
-
-        // Generiraj kolo
-        const wheel = document.getElementById('wheel-container');
-        nagradeKola.forEach((n, i) => {
+        
+        // CRTANJE KOLA
+        const nagrade = [100, 200, 500, 1000, 150, 300, 5000, 50];
+        const boje = ["#e74c3c", "#3498db", "#f1c40f", "#2ecc71", "#9b59b6", "#e67e22", "#1abc9c", "#34495e"];
+        nagrade.forEach((n, i) => {
             const div = document.createElement('div');
-            div.className = 'wheel-part';
+            div.className = 'segment';
             div.style.transform = `rotate(${i * 45}deg) skewY(-45deg)`;
-            div.style.background = i % 2 === 0 ? '#222' : '#444';
-            div.innerHTML = `<span style="transform: skewY(45deg) rotate(22.5deg); margin-left:20px;">${n}</span>`;
-            wheel.appendChild(div);
+            div.style.background = boje[i];
+            div.innerHTML = `<span style="transform: skewY(45deg) rotate(22.5deg); margin-left:25px;">${n}</span>`;
+            document.getElementById('wheel').appendChild(div);
         });
 
-        function otvoriModal(id) { document.getElementById(id).style.display = 'block'; }
-        function zatvoriModal(id) { document.getElementById(id).style.display = 'none'; }
+        function switchTab(tab) {
+            document.getElementById('arena-tab').classList.toggle('hidden', tab !== 'arena');
+            document.getElementById('shop-tab').classList.toggle('hidden', tab !== 'shop');
+        }
 
-        function prijaviSe() {
-            socket.emit('prijava', { nadimak: document.getElementById('nick').value, lozinka: document.getElementById('pass').value, tajna_sifra: document.getElementById('secret').value });
+        function pokusajPrijavu() {
+            socket.emit('provjeri_korisnika', { nadimak: document.getElementById('nick').value, lozinka: document.getElementById('pass').value });
+        }
+
+        socket.on('novi_igrac_registracija', () => {
+            document.getElementById('prijava-box').classList.add('hidden');
+            document.getElementById('secret-box').classList.remove('hidden');
+        });
+
+        function zavrsiRegistraciju() {
+            socket.emit('registruj_novog', { nadimak: document.getElementById('nick').value, lozinka: document.getElementById('pass').value, tajna_sifra: document.getElementById('secret').value });
         }
 
         socket.on('prijavljen', (u) => {
-            mojUser = u;
             document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('nav-menu').classList.remove('hidden');
-            document.getElementById('top-bar').classList.remove('hidden');
-            document.getElementById('game-area').classList.remove('hidden');
-            updateStats(u);
+            document.getElementById('main-screen').classList.remove('hidden');
+            updateUI(u);
+        });
+
+        socket.on('novo_pitanje', (d) => {
+            document.getElementById('pitanje-tekst').innerText = d.tekst;
+            const tag = document.getElementById('kat-tag');
+            tag.innerText = d.kategorija;
+            tag.className = "tag tag-" + d.kategorija;
         });
 
         function handleEnter(e) { if(e.key === 'Enter') { socket.emit('slanje_odgovora', { odgovor: e.target.value }); e.target.value = ""; } }
-        function handleChat(e) { if(e.key === 'Enter') { socket.emit('chat_global', e.target.value); e.target.value = ""; } }
 
-        socket.on('novo_pitanje', (data) => { document.getElementById('pitanje-tekst').innerText = data.tekst; });
-
-        socket.on('osvezi_listu', (users) => {
-            const list = document.getElementById('user-list');
-            list.innerHTML = "";
-            users.forEach(u => {
-                const item = document.createElement('div');
-                item.className = `user-item kartica-${u.aktivniBedz}`;
-                item.innerHTML = `<b>${u.aktivniBedz !== 'standard' ? '⭐' : ''} ${u.nadimak}</b>`;
-                item.onclick = () => socket.emit('pogledaj_profil', u.nadimak);
-                list.appendChild(item);
-            });
+        socket.on('update_stats', (d) => {
+            document.getElementById('stat-bodovi').innerText = d.bodovi;
+            document.getElementById('stat-coins').innerText = d.coinsi;
+            document.getElementById('stat-cisco').innerText = d.ciscoBodovi;
         });
 
-        function startSpin() { socket.emit('zavrti_kolo'); document.getElementById('spin-btn').disabled = true; }
-
-        socket.on('kolo_rezultat', (data) => {
-            const deg = (data.index * 45) + (360 * 5);
-            wheel.style.transform = `rotate(-${deg}deg)`;
-            setTimeout(() => {
-                alert(`OSVOJENO: ${data.iznos} 💰`);
-                document.getElementById('val-coins').innerText = data.novoStanje;
-                zatvoriModal('wheel-modal');
-                document.getElementById('spin-btn').disabled = false;
-            }, 4500);
-        });
+        function updateUI(u) {
+            document.getElementById('stat-bodovi').innerText = u.bodovi;
+            document.getElementById('stat-coins').innerText = u.coinsi;
+            document.getElementById('stat-cisco').innerText = u.ciscoBodovi || 0;
+        }
 
         socket.on('chat_broadcast', (d) => {
             const box = document.getElementById('chat-box');
-            box.innerHTML += `<div><b style="color:var(--accent)">${d.od}:</b> ${d.tekst}</div>`;
+            box.innerHTML += `<div><b>${d.od}:</b> ${d.tekst}</div>`;
             box.scrollTop = box.scrollHeight;
         });
 
-        function otvoriKolekciju() {
-            const lista = document.getElementById('kolekcija-lista');
-            lista.innerHTML = "";
-            const sve = ["Gladijator", "Enciklopedija", "Milijunaš", "Veteran"];
-            sve.forEach(k => {
-                const ima = mojUser.bedzevi.includes(k);
-                lista.innerHTML += `<div style="padding:10px; background:${ima?'#333':'#111'}; opacity:${ima?1:0.3}; border:1px solid ${ima?'var(--gold)':'#444'}">${k}</div>`;
-            });
-            otvoriModal('kolekcija-modal');
-        }
-
-        socket.on('prikaz_profila', (u) => {
-            document.getElementById('profil-sadrzaj').innerHTML = `
-                <img src="${u.avatar}" style="width:80px; border-radius:50%">
-                <h2>${u.nadimak}</h2>
-                <p>Bodovi: ${u.bodovi} | Coinsi: ${u.coinsi}</p>
-                <p>Kartica: ${u.aktivniBedz}</p>
-            `;
-            otvoriModal('profil-modal');
+        socket.on('kolo_rezultat', (data) => {
+            const deg = (data.index * 45) + (360 * 5);
+            document.getElementById('wheel').style.transform = `rotate(-${deg}deg)`;
+            setTimeout(() => { alert("Osvojeno: " + data.iznos + " 💰"); location.reload(); }, 4500);
         });
 
-        function updateStats(u) {
-            document.getElementById('val-exp').innerText = u.bodovi;
-            document.getElementById('val-coins').innerText = u.coinsi;
-        }
-
-        socket.on('obavijest', (m) => alert(m));
+        function otvoriKolo() { document.getElementById('wheel-modal').classList.remove('hidden'); }
+        function zatvoriModal(id) { document.getElementById(id).classList.add('hidden'); }
         socket.on('greska', (m) => alert(m));
     </script>
 </body>
