@@ -2,164 +2,173 @@
 <html lang="hr">
 <head>
     <meta charset="UTF-8">
-    <title>Rekvizit Arena - Multi-Tečaj Mod</title>
+    <title>Rekvizit Arena 1vs1</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { --accent: #00bfff; --gold: #ffd700; --bg: #0d0d0d; --cisco: #049fd9; --ai: #9b59b6; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; text-align: center; }
+        :root { --accent: #00bfff; --gold: #ffd700; --bg: #0d0d0d; --panel: #161616; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; }
         .hidden { display: none !important; }
         
-        .nav-bar { background: #000; padding: 10px; border-bottom: 2px solid var(--accent); display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-        .nav-btn { background: #222; color: white; border: none; padding: 10px 15px; cursor: pointer; border-radius: 5px; font-weight: bold; font-size: 11px; }
-        .nav-btn:hover { background: var(--accent); }
+        /* SIDEBARS */
+        .sidebar { width: 250px; background: #000; border-right: 1px solid #333; display: flex; flex-direction: column; }
+        .sidebar-right { border-right: none; border-left: 1px solid #333; }
+        .list-item { padding: 10px; border-bottom: 1px solid #222; font-size: 14px; display: flex; justify-content: space-between; }
 
-        /* DINAMIČKE BOJE KATEGORIJA */
-        .tag { display: inline-block; padding: 5px 15px; border-radius: 5px; font-size: 12px; font-weight: bold; margin-bottom: 15px; text-transform: uppercase; }
-        .tag-AI, .tag-GenAI { background: var(--ai); }
-        .tag-PacketTracer, .tag-Network { background: var(--cisco); }
-        .tag-Održivost { background: #2ecc71; }
-        .tag-OS, .tag-Hardware, .tag-Mobile { background: #3498db; }
-        .tag-Digital, .tag-Izvještaji { background: #f1c40f; color: black; }
+        /* MAIN */
+        #main { flex: 1; display: flex; flex-direction: column; }
+        .top-bar { background: #111; padding: 15px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-around; }
+        #chat-box { flex: 1; padding: 20px; overflow-y: auto; background: #080808; }
+        .msg { margin-bottom: 10px; }
 
-        .stats-bar { background: #111; padding: 15px; display: flex; justify-content: space-around; border-bottom: 1px solid #333; flex-wrap: wrap; gap: 10px; }
-        .cisco-score { color: var(--cisco); font-size: 1.3em; font-weight: bold; padding: 0 10px; border: 1px solid #333; border-radius: 5px; }
+        /* KVIZ */
+        #quiz-area { background: var(--panel); padding: 30px; text-align: center; border-bottom: 1px solid #333; }
+        input { padding: 12px; background: #000; border: 1px solid #333; color: white; border-radius: 5px; outline: none; width: 60%; }
+        input:focus { border-color: var(--accent); }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .btn-blue { background: var(--accent); color: white; }
 
-        #question-box { padding: 40px 20px; min-height: 250px; }
-        input { padding: 15px; background: #000; border: 1px solid #333; color: white; width: 80%; max-width: 400px; border-radius: 5px; font-size: 18px; margin-top: 20px; border-bottom: 3px solid var(--accent); outline: none; }
+        /* LOGIN */
+        #login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         
-        /* KOLO MODAL */
-        .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #1a1a1a; padding: 25px; border: 2px solid var(--accent); border-radius: 15px; z-index: 100; box-shadow: 0 0 50px rgba(0,0,0,0.9); }
-        #wheel { width: 260px; height: 260px; border-radius: 50%; border: 4px solid white; position: relative; overflow: hidden; transition: transform 4s cubic-bezier(0.1, 0, 0.2, 1); margin: 15px auto; }
-        .segment { position: absolute; width: 50%; height: 50%; transform-origin: 100% 100%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; }
+        /* DUEL MODAL */
+        #duel-ui { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
 
-    <div id="login-screen" style="padding-top: 80px;">
-        <h1 style="letter-spacing: 5px;">REKVIZIT ARENA</h1>
-        <p style="color:var(--cisco)">ACADEMY EDITION</p>
-        <div id="prijava-box" style="margin-top: 30px;">
-            <input type="text" id="nick" placeholder="Nadimak"><br>
-            <input type="password" id="pass" placeholder="Lozinka"><br>
-            <button class="nav-btn" onclick="pokusajPrijavu()" style="width:80%; max-width:400px; margin-top:15px; background:var(--gold); color:black; font-size:16px;">PRISTUPI</button>
+    <div id="login-screen">
+        <h1 style="font-size: 3em; letter-spacing: 3px;">REKVIZIT <span style="color:var(--accent)">ARENA</span></h1>
+        <div id="login-fields">
+            <input type="text" id="nick" placeholder="Nadimak" onkeypress="if(event.key==='Enter') pokusajPrijavu()"><br><br>
+            <input type="password" id="pass" placeholder="Lozinka" onkeypress="if(event.key==='Enter') pokusajPrijavu()"><br><br>
+            <button class="btn btn-blue" onclick="pokusajPrijavu()" style="width:100%">PRISTUPI</button>
         </div>
         <div id="secret-box" class="hidden">
-            <h3 style="color:var(--accent)">PRVA PRIJAVA: Postavi tajnu šifru</h3>
-            <input type="password" id="secret" placeholder="Tajna šifra"><br>
-            <button class="nav-btn" onclick="zavrsiRegistraciju()" style="width:80%; max-width:400px;">ZAVRŠI</button>
+            <p>Postavi tajnu šifru (prva prijava):</p>
+            <input type="password" id="secret" placeholder="Šifra" onkeypress="if(event.key==='Enter') zavrsiRegistraciju()"><br><br>
+            <button class="btn btn-blue" onclick="zavrsiRegistraciju()">SAČUVAJ</button>
         </div>
     </div>
 
-    <div id="main-screen" class="hidden">
-        <div class="nav-bar">
-            <button class="nav-btn" onclick="switchTab('arena')">ARENA</button>
-            <button class="nav-btn" onclick="switchTab('shop')">SHOP</button>
-            <button class="nav-btn" onclick="otvoriKolo()">🎡 KOLO SREĆE</button>
-            <button class="nav-btn" onclick="location.reload()" style="color:red">ODJAVA</button>
-        </div>
+    <div class="sidebar">
+        <div style="padding:15px; color:var(--accent); font-weight:bold;">ONLINE IGRAČI</div>
+        <div id="online-list"></div>
+    </div>
 
-        <div class="stats-bar">
+    <div id="main">
+        <div class="top-bar">
             <span>🏆 EXP: <b id="stat-bodovi">0</b></span>
             <span>💰 COINS: <b id="stat-coins">0</b></span>
-            <span class="cisco-score">🎓 CISCO XP: <b id="stat-cisco">0</b></span>
+            <span style="color:var(--accent)">💻 CISCO: <b id="stat-cisco">0</b></span>
         </div>
 
-        <div id="arena-tab">
-            <div id="question-box">
-                <div id="kat-tag" class="tag">KATEGORIJA</div>
-                <h2 id="pitanje-tekst">Učitavanje sljedećeg izazova...</h2>
-                <input type="text" id="odgovor-in" onkeypress="handleEnter(event)" placeholder="Upiši odgovor...">
-            </div>
-            <div id="chat-box" style="background:#080808; padding:15px; height:150px; overflow-y:auto; text-align:left; font-size:14px; border-top:1px solid #222;"></div>
+        <div id="quiz-area">
+            <h2 id="q-text">Čekanje na pitanje...</h2>
+            <input type="text" id="ans-in" placeholder="Odgovori ovdje..." onkeypress="if(event.key==='Enter') posaljiOdgovor()">
         </div>
 
-        <div id="shop-tab" class="hidden" style="padding:50px;">
-            <h2>USKORO U ARENI</h2>
-            <p>Shop za zamjenu Coinsa za bedževe tečajeva.</p>
+        <div id="chat-box"></div>
+
+        <div style="padding:15px; background:#111; display:flex;">
+            <input type="text" id="chat-in" placeholder="Globalni chat..." style="flex:1" onkeypress="if(event.key==='Enter') posaljiChat()">
         </div>
     </div>
 
-    <div id="wheel-modal" class="modal hidden">
-        <div id="wheel"></div>
-        <button class="nav-btn" onclick="socket.emit('zavrti_kolo')" style="background:var(--gold); color:black; width:100%; font-size:16px;">ZAVRTI</button>
-        <button onclick="zatvoriModal('wheel-modal')" style="background:none; border:none; color:gray; cursor:pointer; margin-top:10px;">Zatvori</button>
+    <div class="sidebar sidebar-right">
+        <div style="padding:15px; color:var(--gold); font-weight:bold;">LEADERBOARD</div>
+        <div id="leader-list"></div>
+    </div>
+
+    <div id="duel-ui" class="hidden">
+        <h1 style="color:var(--gold)">⚔️ 1 VS 1 DUEL ⚔️</h1>
+        <h3 id="duel-protivnik">Protivnik: ...</h3>
+        <div style="background:#222; padding:30px; border-radius:10px; width:80%; text-align:center;">
+            <h2 id="duel-pitanje">...</h2>
+            <input type="text" id="duel-ans" placeholder="Tvoj BRZI odgovor..." onkeypress="if(event.key==='Enter') posaljiDuelOdgovor()">
+        </div>
     </div>
 
     <script>
         const socket = io();
-        
-        // CRTANJE KOLA
-        const nagrade = [100, 200, 500, 1000, 150, 300, 5000, 50];
-        const boje = ["#e74c3c", "#3498db", "#f1c40f", "#2ecc71", "#9b59b6", "#e67e22", "#1abc9c", "#34495e"];
-        nagrade.forEach((n, i) => {
-            const div = document.createElement('div');
-            div.className = 'segment';
-            div.style.transform = `rotate(${i * 45}deg) skewY(-45deg)`;
-            div.style.background = boje[i];
-            div.innerHTML = `<span style="transform: skewY(45deg) rotate(22.5deg); margin-left:25px;">${n}</span>`;
-            document.getElementById('wheel').appendChild(div);
-        });
-
-        function switchTab(tab) {
-            document.getElementById('arena-tab').classList.toggle('hidden', tab !== 'arena');
-            document.getElementById('shop-tab').classList.toggle('hidden', tab !== 'shop');
-        }
+        let trenutniRoom = null;
 
         function pokusajPrijavu() {
             socket.emit('provjeri_korisnika', { nadimak: document.getElementById('nick').value, lozinka: document.getElementById('pass').value });
         }
-
-        socket.on('novi_igrac_registracija', () => {
-            document.getElementById('prijava-box').classList.add('hidden');
-            document.getElementById('secret-box').classList.remove('hidden');
-        });
-
         function zavrsiRegistraciju() {
             socket.emit('registruj_novog', { nadimak: document.getElementById('nick').value, lozinka: document.getElementById('pass').value, tajna_sifra: document.getElementById('secret').value });
         }
 
         socket.on('prijavljen', (u) => {
             document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('main-screen').classList.remove('hidden');
-            updateUI(u);
+            updateStats(u);
         });
 
-        socket.on('novo_pitanje', (d) => {
-            document.getElementById('pitanje-tekst').innerText = d.tekst;
-            const tag = document.getElementById('kat-tag');
-            tag.innerText = d.kategorija;
-            tag.className = "tag tag-" + d.kategorija;
+        function posaljiOdgovor() {
+            const inp = document.getElementById('ans-in');
+            socket.emit('slanje_odgovora', { odgovor: inp.value });
+            inp.value = "";
+        }
+
+        function posaljiChat() {
+            const inp = document.getElementById('chat-in');
+            socket.emit('chat_global', inp.value);
+            inp.value = "";
+        }
+
+        socket.on('osvezi_listu', (users) => {
+            document.getElementById('online-list').innerHTML = users.map(u => `
+                <div class="list-item">
+                    ${u.nadimak} 
+                    <button onclick="socket.emit('izazovi_igraca', '${u.id}')">⚔️</button>
+                </div>
+            `).join('');
         });
 
-        function handleEnter(e) { if(e.key === 'Enter') { socket.emit('slanje_odgovora', { odgovor: e.target.value }); e.target.value = ""; } }
-
-        socket.on('update_stats', (d) => {
-            document.getElementById('stat-bodovi').innerText = d.bodovi;
-            document.getElementById('stat-coins').innerText = d.coinsi;
-            document.getElementById('stat-cisco').innerText = d.ciscoBodovi;
+        socket.on('leaderboard', (list) => {
+            document.getElementById('leader-list').innerHTML = list.map((u, i) => `
+                <div class="list-item"><span>${i+1}. ${u.nadimak}</span> <b>${u.bodovi}</b></div>
+            `).join('');
         });
 
-        function updateUI(u) {
+        socket.on('dobio_izazov', (data) => {
+            if(confirm(`${data.odKoga} te izaziva na 1vs1! Prihvaćaš?`)) {
+                socket.emit('prihvati_izazov', data);
+            }
+        });
+
+        socket.on('start_duel', (data) => {
+            trenutniRoom = `room_` + (socket.id < data.odId ? socket.id : data.odId); // Pojednostavljeno
+            document.getElementById('duel-ui').classList.remove('hidden');
+            document.getElementById('duel-pitanje').innerText = data.pitanje;
+            document.getElementById('duel-protivnik').innerText = "Protivnik: " + data.protivnik;
+        });
+
+        function posaljiDuelOdgovor() {
+            const inp = document.getElementById('duel-ans');
+            socket.emit('slanje_odgovora', { odgovor: inp.value, room: trenutniRoom }); // Server treba doradu za room ID
+            inp.value = "";
+        }
+
+        socket.on('duel_gotov', (data) => {
+            alert("Pobjednik duela: " + data.pobjednik);
+            document.getElementById('duel-ui').classList.add('hidden');
+            trenutniRoom = null;
+        });
+
+        socket.on('chat_msg', (d) => {
+            const box = document.getElementById('chat-box');
+            box.innerHTML += `<div class="msg"><b>${d.od}:</b> ${d.tekst}</div>`;
+            box.scrollTop = box.scrollHeight;
+        });
+
+        socket.on('update_stats', updateStats);
+        function updateStats(u) {
             document.getElementById('stat-bodovi').innerText = u.bodovi;
             document.getElementById('stat-coins').innerText = u.coinsi;
             document.getElementById('stat-cisco').innerText = u.ciscoBodovi || 0;
         }
-
-        socket.on('chat_broadcast', (d) => {
-            const box = document.getElementById('chat-box');
-            box.innerHTML += `<div><b>${d.od}:</b> ${d.tekst}</div>`;
-            box.scrollTop = box.scrollHeight;
-        });
-
-        socket.on('kolo_rezultat', (data) => {
-            const deg = (data.index * 45) + (360 * 5);
-            document.getElementById('wheel').style.transform = `rotate(-${deg}deg)`;
-            setTimeout(() => { alert("Osvojeno: " + data.iznos + " 💰"); location.reload(); }, 4500);
-        });
-
-        function otvoriKolo() { document.getElementById('wheel-modal').classList.remove('hidden'); }
-        function zatvoriModal(id) { document.getElementById(id).classList.add('hidden'); }
-        socket.on('greska', (m) => alert(m));
+        socket.on('greska', m => alert(m));
     </script>
 </body>
 </html>
