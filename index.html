@@ -6,38 +6,44 @@
     <title>Rekvizit Arena</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { --main-bg: #121212; --accent: #00bfff; --danger: #ff4d4d; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--main-bg); color: white; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .container { background: #1a1a1a; padding: 30px; border: 2px solid #333; border-radius: 12px; width: 320px; text-align: center; }
+        :root { --main-bg: #121212; --accent: #00bfff; }
+        body { background: var(--main-bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-box { background: #1a1a1a; padding: 30px; border: 2px solid #333; border-radius: 12px; width: 320px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.7); }
+        h2 { color: var(--accent); letter-spacing: 2px; margin-bottom: 20px; font-size: 20px; }
         input, textarea { width: 100%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #444; color: var(--accent); border-radius: 6px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 6px; }
+        button { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; font-weight: bold; cursor: pointer; border-radius: 6px; transition: 0.3s; }
+        button:hover { background: #008ecc; }
+        /* Ova klasa je ključna da bi gumbi radili ispravno */
+        .hidden { display: none !important; }
         .forgot-link { color: #666; font-size: 13px; cursor: pointer; text-decoration: underline; margin-top: 15px; display: block; }
-        .hidden { display: none; }
-        #timer { font-size: 60px; font-weight: bold; }
+        .info-msg { font-size: 11px; color: #888; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <div id="login-screen" class="container">
-        <h2 style="color: var(--accent);">ARENA LOGIN</h2>
+    <div id="login-screen" class="login-box">
+        <h2>REKVIZIT ARENA LOGIN</h2>
+        
         <div id="auth-fields">
             <input type="text" id="nick" placeholder="Nadimak" onblur="provjeriPostojanje()">
             <input type="password" id="pass" placeholder="Lozinka">
+            
             <div id="secret-wrap" class="hidden">
                 <input type="password" id="secret" placeholder="Tajna šifra">
-                <p style="font-size: 11px; color: #888;">Novi ste? Unesite tajnu šifru.</p>
+                <p class="info-msg">Prva prijava? Unesite tajnu šifru.</p>
             </div>
+
             <button onclick="prijaviSe()">PRISTUPI</button>
             <span class="forgot-link" onclick="prikaziReset()">Zaboravljena lozinka?</span>
         </div>
 
         <div id="reset-fields" class="hidden">
-            <p>Oporavak računa</p>
-            <input type="text" id="reset-nick" placeholder="Nadimak">
-            <textarea id="reset-reason" placeholder="Razlog (zaboravljena lozinka/promjena)"></textarea>
+            <p style="font-size: 14px;">Oporavak računa</p>
+            <input type="text" id="reset-nick" placeholder="Vaš nadimak">
+            <textarea id="reset-reason" rows="3" placeholder="Zaboravljena lozinka ili želite promjenu?"></textarea>
             <input type="password" id="reset-master" placeholder="Tajna šifra">
             <button onclick="posaljiZahtjev()">POŠALJI</button>
-            <span class="forgot-link" onclick="nazadNaLogin()">Povratak</span>
+            <span class="forgot-link" onclick="nazadNaLogin()">Nazad na prijavu</span>
         </div>
     </div>
 
@@ -59,13 +65,21 @@
             const nick = document.getElementById('nick').value;
             const pass = document.getElementById('pass').value;
             const secret = document.getElementById('secret').value;
+            
+            if(!nick || !pass) return alert("Unesite nadimak i lozinku!");
+            
             socket.emit('prijava', { nadimak: nick, lozinka: pass, tajna_sifra: secret });
         }
 
-        socket.on('prijavljen', (res) => {
-            document.getElementById('login-screen').classList.add('hidden');
-            // Ovdje otvoriš main-menu
-        });
+        function prikaziReset() {
+            document.getElementById('auth-fields').classList.add('hidden');
+            document.getElementById('reset-fields').classList.remove('hidden');
+        }
+
+        function nazadNaLogin() {
+            document.getElementById('reset-fields').classList.add('hidden');
+            document.getElementById('auth-fields').classList.remove('hidden');
+        }
 
         function posaljiZahtjev() {
             const nick = document.getElementById('reset-nick').value;
@@ -80,8 +94,12 @@
         }
 
         socket.on('zahtjev_primljen', () => {
-            alert("Administrator će odobriti vaš zahtjev kroz nekoliko sati. Možete se javiti i na profil Blanco.");
-            location.reload();
+            alert("Ukoliko su svi podaci ispravno upisani, administrator će odobriti vaš zahtjev kroz nekoliko sati. Također se možete javiti na profil Blanco.");
+            nazadNaLogin();
+        });
+
+        socket.on('prijavljen', (res) => {
+            alert("Uspješna prijava! Dobrodošao " + res.nadimak);
         });
 
         socket.on('greska', (msg) => alert(msg));

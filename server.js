@@ -9,20 +9,18 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 // --- MONGO DB POVEZIVANJE ---
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("Povezan na MongoDB"))
-    .catch(err => console.error("Greška s bazom:", err));
+// Render koristi varijablu MONGO_URI iz Environment postavki
+mongoose.connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 })
+    .then(() => console.log("Povezan na MongoDB ✅"))
+    .catch(err => console.error("Greška s bazom: Provjerite IP Whitelist u Atlasu! ❌", err));
 
-// Model Korisnika
 const UserSchema = new mongoose.Schema({
     nadimak: { type: String, unique: true },
     lozinka: String,
-    bodovi: { type: Number, default: 0 },
-    isShadowBanned: { type: Boolean, default: false }
+    bodovi: { type: Number, default: 0 }
 });
 const User = mongoose.model('User', UserSchema);
 
-// Model za Zahtjeve (Zaboravljena lozinka)
 const RequestSchema = new mongoose.Schema({
     nadimak: String,
     poruka: String,
@@ -32,36 +30,35 @@ const SupportRequest = mongoose.model('SupportRequest', RequestSchema);
 
 app.use(express.static('.'));
 
-let trenutnoPitanje = null;
-let tajmerInterval = null;
-
 io.on('connection', (socket) => {
     
-    // Provjera postoji li korisnik (za prikaz tajne šifre)
     socket.on('provjeri_postojanje', async (nadimak) => {
-        const u = await User.findOne({ nadimak });
-        socket.emit('odgovor_postojanja', { postoji: !!u });
+        try {
+            const u = await User.findOne({ nadimak });
+            socket.emit('odgovor_postojanja', { postoji: !!u });
+        } catch (e) {
+            console.log("Baza nije dostupna");
+        }
     });
 
     socket.on('prijava', async (data) => {
-        let u = await User.findOne({ nadimak: data.nadimak });
-
-        if (!u) {
-            // Prva prijava - registracija
-            if (data.tajna_sifra === "ARENA2026") {
-                u = new User({ nadimak: data.nadimak, lozinka: data.lozinka });
-                await u.save();
-                prijaviIgraca(socket, u);
-            } else {
-                socket.emit('greska', "Pogrešna tajna šifra za prvu registraciju!");
-            }
-        } else {
-            // Postojeći korisnik
-            if (u.lozinka === data.lozinka) {
-                prijaviIgraca(socket, u);
+        try {
+            let u = await User.findOne({ nadimak: data.nadimak });
+            if (!u) {
+                if (data.tajna_sifra === "ARENA2026") {
+                    u = new User({ nadimak: data.nadimak, lozinka: data.lozinka });
+                    await u.save();
+                    socket.emit('prijavljen', { nadimak: u.nadimak });
+                } else {
+                    socket.emit('greska', "Pogrešna tajna šifra!");
+                }
+            } else if (u.lozinka === data.lozinka) {
+                socket.emit('prijavljen', { nadimak: u.nadimak });
             } else {
                 socket.emit('greska', "Pogrešna lozinka!");
             }
+        } catch (e) {
+            socket.emit('greska', "Sustav trenutno nije povezan s bazom.");
         }
     });
 
@@ -70,15 +67,7 @@ io.on('connection', (socket) => {
         await noviZahtjev.save();
         socket.emit('zahtjev_primljen');
     });
-
-    // Ostatak tvoje logike za kviz (iz starog server.js)
 });
 
-function prijaviIgraca(socket, user) {
-    socket.nadimak = user.nadimak;
-    socket.isShadowBanned = user.isShadowBanned;
-    socket.emit('prijavljen', { nadimak: user.nadimak });
-}
-
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 server.listen(PORT, () => console.log(`Arena trči na portu ${PORT}`));
