@@ -2,110 +2,132 @@
 <html lang="hr">
 <head>
     <meta charset="UTF-8">
-    <title>Rekvizit Arena 1vs1</title>
+    <title>Rekvizit Arena Ultimate</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { --accent: #00bfff; --gold: #ffd700; --bg: #0d0d0d; --panel: #161616; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; }
+        :root { --accent: #00d2ff; --gold: #ffcc00; --bg: #050505; --card: #121212; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         .hidden { display: none !important; }
-        
-        /* SIDEBARS */
-        .sidebar { width: 250px; background: #000; border-right: 1px solid #333; display: flex; flex-direction: column; }
-        .sidebar-right { border-right: none; border-left: 1px solid #333; }
-        .list-item { padding: 10px; border-bottom: 1px solid #222; font-size: 14px; display: flex; justify-content: space-between; }
 
-        /* MAIN */
-        #main { flex: 1; display: flex; flex-direction: column; }
-        .top-bar { background: #111; padding: 15px; border-bottom: 2px solid var(--accent); display: flex; justify-content: space-around; }
-        #chat-box { flex: 1; padding: 20px; overflow-y: auto; background: #080808; }
-        .msg { margin-bottom: 10px; }
+        /* LOGIN & MODALI */
+        #login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 10000; display: flex; align-items: center; justify-content: center; }
+        .box { background: var(--card); padding: 40px; border-radius: 15px; border: 1px solid #333; width: 350px; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #444; color: white; border-radius: 5px; box-sizing: border-box; }
+        .btn { width: 100%; padding: 12px; background: var(--accent); border: none; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 10px; }
 
-        /* KVIZ */
-        #quiz-area { background: var(--panel); padding: 30px; text-align: center; border-bottom: 1px solid #333; }
-        input { padding: 12px; background: #000; border: 1px solid #333; color: white; border-radius: 5px; outline: none; width: 60%; }
-        input:focus { border-color: var(--accent); }
-        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-blue { background: var(--accent); color: white; }
+        /* LEADERBOARD SIDEBAR */
+        #sidebar { width: 320px; background: #000; border-right: 1px solid #222; display: flex; flex-direction: column; }
+        .tabs { display: flex; background: #111; font-size: 10px; cursor: pointer; }
+        .tabs div { flex: 1; padding: 15px; text-align: center; border-bottom: 2px solid transparent; }
+        .tabs div.active { border-color: var(--accent); color: var(--accent); }
+        .row { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #111; font-size: 13px; }
 
-        /* LOGIN */
-        #login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        
-        /* DUEL MODAL */
-        #duel-ui { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        /* MAIN APP */
+        #app { flex: 1; display: flex; flex-direction: column; }
+        .nav { height: 60px; background: #0a0a0a; border-bottom: 1px solid #222; display: flex; align-items: center; padding: 0 20px; gap: 20px; }
+        .nav-item { cursor: pointer; font-size: 14px; font-weight: bold; opacity: 0.7; }
+        .nav-item:hover { opacity: 1; color: var(--accent); }
+
+        /* KVIZ ZONA */
+        #quiz { flex: 1; text-align: center; padding: 50px; background: radial-gradient(circle at center, #151515, #050505); }
+        .kat { background: var(--accent); color: black; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 12px; text-transform: uppercase; }
+        #chat { height: 200px; background: #080808; border-top: 1px solid #222; padding: 15px; overflow-y: auto; }
     </style>
 </head>
 <body>
 
-    <div id="login-screen">
-        <h1 style="font-size: 3em; letter-spacing: 3px;">REKVIZIT <span style="color:var(--accent)">ARENA</span></h1>
-        <div id="login-fields">
-            <input type="text" id="nick" placeholder="Nadimak" onkeypress="if(event.key==='Enter') pokusajPrijavu()"><br><br>
-            <input type="password" id="pass" placeholder="Lozinka" onkeypress="if(event.key==='Enter') pokusajPrijavu()"><br><br>
-            <button class="btn btn-blue" onclick="pokusajPrijavu()" style="width:100%">PRISTUPI</button>
+    <div id="login-overlay">
+        <div class="box" id="login-form">
+            <h1 style="letter-spacing: 3px;">ARENA</h1>
+            <input type="text" id="l-nick" placeholder="Nadimak" onkeypress="if(event.key==='Enter') login()">
+            <input type="password" id="l-pass" placeholder="Lozinka" onkeypress="if(event.key==='Enter') login()">
+            <button class="btn" onclick="login()">ULAZ U ARENU</button>
+            <p style="font-size: 11px; color: #666; cursor: pointer; margin-top: 15px;" onclick="prikaziZaboravljeno()">Zaboravljena lozinka?</p>
         </div>
-        <div id="secret-box" class="hidden">
-            <p>Postavi tajnu šifru (prva prijava):</p>
-            <input type="password" id="secret" placeholder="Šifra" onkeypress="if(event.key==='Enter') zavrsiRegistraciju()"><br><br>
-            <button class="btn btn-blue" onclick="zavrsiRegistraciju()">SAČUVAJ</button>
+        <div class="box hidden" id="reg-form">
+            <p style="color:var(--accent)">Postavi tajnu šifru za oporavak:</p>
+            <input type="password" id="r-secret" placeholder="Tajna šifra">
+            <button class="btn" onclick="registriraj()">DOVRŠI</button>
         </div>
-    </div>
-
-    <div class="sidebar">
-        <div style="padding:15px; color:var(--accent); font-weight:bold;">ONLINE IGRAČI</div>
-        <div id="online-list"></div>
-    </div>
-
-    <div id="main">
-        <div class="top-bar">
-            <span>🏆 EXP: <b id="stat-bodovi">0</b></span>
-            <span>💰 COINS: <b id="stat-coins">0</b></span>
-            <span style="color:var(--accent)">💻 CISCO: <b id="stat-cisco">0</b></span>
-        </div>
-
-        <div id="quiz-area">
-            <h2 id="q-text">Čekanje na pitanje...</h2>
-            <input type="text" id="ans-in" placeholder="Odgovori ovdje..." onkeypress="if(event.key==='Enter') posaljiOdgovor()">
-        </div>
-
-        <div id="chat-box"></div>
-
-        <div style="padding:15px; background:#111; display:flex;">
-            <input type="text" id="chat-in" placeholder="Globalni chat..." style="flex:1" onkeypress="if(event.key==='Enter') posaljiChat()">
+        <div class="box hidden" id="zaboravljeno-form">
+            <h3>Oporavak Računa</h3>
+            <input id="z-nick" placeholder="Nadimak">
+            <input id="z-pass" placeholder="Nova lozinka">
+            <input id="z-tajna" placeholder="Tajna šifra">
+            <input id="z-razlog" placeholder="Razlog">
+            <button class="btn" onclick="posaljiZahtjev()">POŠALJI ZAHTJEV</button>
         </div>
     </div>
-
-    <div class="sidebar sidebar-right">
-        <div style="padding:15px; color:var(--gold); font-weight:bold;">LEADERBOARD</div>
-        <div id="leader-list"></div>
+    <div id="sidebar">
+        <div class="tabs">
+            <div class="active">UKUPNO</div>
+            <div>DNEVNO</div>
+            <div>ONLINE</div>
+        </div>
+        <div id="lb-content" style="flex:1; overflow-y:auto;"></div>
     </div>
 
-    <div id="duel-ui" class="hidden">
-        <h1 style="color:var(--gold)">⚔️ 1 VS 1 DUEL ⚔️</h1>
-        <h3 id="duel-protivnik">Protivnik: ...</h3>
-        <div style="background:#222; padding:30px; border-radius:10px; width:80%; text-align:center;">
-            <h2 id="duel-pitanje">...</h2>
-            <input type="text" id="duel-ans" placeholder="Tvoj BRZI odgovor..." onkeypress="if(event.key==='Enter') posaljiDuelOdgovor()">
+    <div id="app">
+        <div class="nav">
+            <div class="nav-item">KVIZ</div>
+            <div class="nav-item">TRGOVINA</div>
+            <div class="nav-item">PRAVILA</div>
+            <div style="flex:1"></div>
+            <span id="stat-coins" style="color:var(--gold)">0 💰</span>
+            <div id="my-profile" style="width:35px; height:35px; border-radius:50%; background:#333; cursor:pointer;"></div>
+            <div class="nav-item" style="color:red" onclick="location.reload()">ODJAVA</div>
+        </div>
+
+        <div id="quiz">
+            <span id="q-kat" class="kat">KATEGORIJA</span>
+            <h1 id="q-text" style="font-size: 3em; margin: 40px 0;">Spremite se...</h1>
+            <input type="text" id="q-ans" placeholder="Upiši odgovor i pritisni Enter" style="width: 70%; font-size: 1.5em; text-align: center;" onkeypress="if(event.key==='Enter') posaljiOdgovor()">
+        </div>
+
+        <div id="chat"></div>
+        <input id="chat-in" placeholder="Napiši poruku i pritisni Enter..." style="background:#000; border:none; padding:15px; color:white; border-top:1px solid #333;" onkeypress="if(event.key==='Enter') posaljiChat()">
+    </div>
+
+    <div id="rules-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:20000; display:flex; align-items:center; justify-content:center;">
+        <div class="box" style="width:450px;">
+            <h2>Pravila i Uvjeti</h2>
+            <p style="text-align:left; font-size:14px; color:#aaa;">
+                ● Svaki pogrešan odgovor oduzima -2 boda.<br>
+                ● Zabranjeno je varanje i vrijeđanje.<br>
+                ● 1vs1 pobjednik uzima ulog bodova.
+            </p>
+            <button class="btn" onclick="prihvatiRules()">PRIHVAĆAM I ULAZIM</button>
         </div>
     </div>
 
     <script>
         const socket = io();
-        let trenutniRoom = null;
 
-        function pokusajPrijavu() {
-            socket.emit('provjeri_korisnika', { nadimak: document.getElementById('nick').value, lozinka: document.getElementById('pass').value });
-        }
-        function zavrsiRegistraciju() {
-            socket.emit('registruj_novog', { nadimak: document.getElementById('nick').value, lozinka: document.getElementById('pass').value, tajna_sifra: document.getElementById('secret').value });
+        function login() {
+            socket.emit('pokusaj_prijave', { nadimak: document.getElementById('l-nick').value, lozinka: document.getElementById('l-pass').value });
         }
 
-        socket.on('prijavljen', (u) => {
-            document.getElementById('login-screen').classList.add('hidden');
-            updateStats(u);
+        socket.on('otvori_registraciju', () => {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('reg-form').classList.remove('hidden');
+        });
+
+        function registriraj() {
+            socket.emit('registracija', { 
+                nadimak: document.getElementById('l-nick').value, 
+                lozinka: document.getElementById('l-pass').value, 
+                tajna_sifra: document.getElementById('r-secret').value 
+            });
+        }
+
+        socket.on('prijava_uspjesna', (u) => {
+            document.getElementById('login-overlay').classList.add('hidden');
+            if(!u.prihvacenaPravila) document.getElementById('rules-overlay').classList.remove('hidden');
+            document.getElementById('stat-coins').innerText = u.coinsi + " 💰";
         });
 
         function posaljiOdgovor() {
-            const inp = document.getElementById('ans-in');
+            const inp = document.getElementById('q-ans');
             socket.emit('slanje_odgovora', { odgovor: inp.value });
             inp.value = "";
         }
@@ -116,58 +138,43 @@
             inp.value = "";
         }
 
-        socket.on('osvezi_listu', (users) => {
-            document.getElementById('online-list').innerHTML = users.map(u => `
-                <div class="list-item">
-                    ${u.nadimak} 
-                    <button onclick="socket.emit('izazovi_igraca', '${u.id}')">⚔️</button>
+        socket.on('novo_pitanje', d => {
+            document.getElementById('q-text').innerText = d.tekst;
+            document.getElementById('q-kat').innerText = d.kat;
+        });
+
+        socket.on('update_leaderboard', data => {
+            const list = document.getElementById('lb-content');
+            list.innerHTML = data.ukupno.map((u, i) => `
+                <div class="row">
+                    <span style="width:25px; color:var(--accent)">${i+1}.</span>
+                    <div style="flex:1"><b>${u.nadimak}</b></div>
+                    <div style="color:var(--accent)">${u.bodovi}</div>
                 </div>
             `).join('');
         });
 
-        socket.on('leaderboard', (list) => {
-            document.getElementById('leader-list').innerHTML = list.map((u, i) => `
-                <div class="list-item"><span>${i+1}. ${u.nadimak}</span> <b>${u.bodovi}</b></div>
-            `).join('');
-        });
-
-        socket.on('dobio_izazov', (data) => {
-            if(confirm(`${data.odKoga} te izaziva na 1vs1! Prihvaćaš?`)) {
-                socket.emit('prihvati_izazov', data);
-            }
-        });
-
-        socket.on('start_duel', (data) => {
-            trenutniRoom = `room_` + (socket.id < data.odId ? socket.id : data.odId); // Pojednostavljeno
-            document.getElementById('duel-ui').classList.remove('hidden');
-            document.getElementById('duel-pitanje').innerText = data.pitanje;
-            document.getElementById('duel-protivnik').innerText = "Protivnik: " + data.protivnik;
-        });
-
-        function posaljiDuelOdgovor() {
-            const inp = document.getElementById('duel-ans');
-            socket.emit('slanje_odgovora', { odgovor: inp.value, room: trenutniRoom }); // Server treba doradu za room ID
-            inp.value = "";
-        }
-
-        socket.on('duel_gotov', (data) => {
-            alert("Pobjednik duela: " + data.pobjednik);
-            document.getElementById('duel-ui').classList.add('hidden');
-            trenutniRoom = null;
-        });
-
-        socket.on('chat_msg', (d) => {
-            const box = document.getElementById('chat-box');
-            box.innerHTML += `<div class="msg"><b>${d.od}:</b> ${d.tekst}</div>`;
+        socket.on('chat_msg', d => {
+            const box = document.getElementById('chat');
+            box.innerHTML += `<div><b style="color:var(--accent)">${d.od}:</b> ${d.tekst}</div>`;
             box.scrollTop = box.scrollHeight;
         });
 
-        socket.on('update_stats', updateStats);
-        function updateStats(u) {
-            document.getElementById('stat-bodovi').innerText = u.bodovi;
-            document.getElementById('stat-coins').innerText = u.coinsi;
-            document.getElementById('stat-cisco').innerText = u.ciscoBodovi || 0;
+        function prihvatiRules() {
+            socket.emit('prihvati_uvjete');
+            document.getElementById('rules-overlay').classList.add('hidden');
         }
+
+        function prikaziZaboravljeno() {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('zaboravljeno-form').classList.remove('hidden');
+        }
+
+        function posaljiZahtjev() {
+            alert("Ukoliko su podaci ispravni, administrator će odobriti kroz nekoliko sati.");
+            location.reload();
+        }
+
         socket.on('greska', m => alert(m));
     </script>
 </body>
