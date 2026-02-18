@@ -2,179 +2,153 @@
 <html lang="hr">
 <head>
     <meta charset="UTF-8">
-    <title>Rekvizit Arena Ultimate</title>
+    <title>Rekvizit Arena v2</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { --accent: #00d2ff; --gold: #ffcc00; --bg: #050505; --card: #121212; }
-        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        :root { --main: #00eaff; --bg: #050505; --panel: #111; --gold: #ffd700; }
+        body { background: var(--bg); color: white; font-family: sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
         .hidden { display: none !important; }
+        
+        /* SIDEBAR LIJEVO */
+        #sidebar { width: 300px; background: #000; border-right: 1px solid #333; display: flex; flex-direction: column; }
+        .sidebar-section { padding: 15px; border-bottom: 1px solid #222; overflow-y: auto; }
+        .user-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #111; }
+        .av-mini { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--main); }
 
-        /* LOGIN & MODALI */
-        #login-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 10000; display: flex; align-items: center; justify-content: center; }
-        .box { background: var(--card); padding: 40px; border-radius: 15px; border: 1px solid #333; width: 350px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; background: #000; border: 1px solid #444; color: white; border-radius: 5px; box-sizing: border-box; }
-        .btn { width: 100%; padding: 12px; background: var(--accent); border: none; font-weight: bold; cursor: pointer; border-radius: 5px; margin-top: 10px; }
+        /* GLAVNI DIO */
+        #main { flex: 1; display: flex; flex-direction: column; }
+        .navbar { height: 60px; background: #0a0a0a; border-bottom: 1px solid #333; display: flex; align-items: center; padding: 0 20px; gap: 15px; }
+        .nav-btn { background: #222; border: 1px solid #444; color: white; padding: 8px 15px; cursor: pointer; border-radius: 5px; font-weight: bold; }
+        .nav-btn:hover { background: var(--main); color: black; }
 
-        /* LEADERBOARD SIDEBAR */
-        #sidebar { width: 320px; background: #000; border-right: 1px solid #222; display: flex; flex-direction: column; }
-        .tabs { display: flex; background: #111; font-size: 10px; cursor: pointer; }
-        .tabs div { flex: 1; padding: 15px; text-align: center; border-bottom: 2px solid transparent; }
-        .tabs div.active { border-color: var(--accent); color: var(--accent); }
-        .row { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #111; font-size: 13px; }
+        /* BANNER */
+        .banner-wrap { background: #ff4400; color: white; padding: 5px 0; overflow: hidden; white-space: nowrap; }
+        .banner-text { display: inline-block; animation: marquee 15s linear infinite; font-weight: bold; }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
 
-        /* MAIN APP */
-        #app { flex: 1; display: flex; flex-direction: column; }
-        .nav { height: 60px; background: #0a0a0a; border-bottom: 1px solid #222; display: flex; align-items: center; padding: 0 20px; gap: 20px; }
-        .nav-item { cursor: pointer; font-size: 14px; font-weight: bold; opacity: 0.7; }
-        .nav-item:hover { opacity: 1; color: var(--accent); }
-
-        /* KVIZ ZONA */
-        #quiz { flex: 1; text-align: center; padding: 50px; background: radial-gradient(circle at center, #151515, #050505); }
-        .kat { background: var(--accent); color: black; padding: 5px 15px; border-radius: 20px; font-weight: bold; font-size: 12px; text-transform: uppercase; }
-        #chat { height: 200px; background: #080808; border-top: 1px solid #222; padding: 15px; overflow-y: auto; }
+        /* ZONE */
+        .content-zone { flex: 1; display: flex; flex-direction: column; padding: 20px; }
+        #quiz-box { text-align: center; background: var(--panel); padding: 30px; border-radius: 10px; border: 1px solid var(--main); margin-bottom: 15px; }
+        #chat-box { flex: 1; background: #080808; border: 1px solid #222; overflow-y: auto; padding: 15px; margin-top: 10px; }
+        
+        .timer-circle { font-size: 2em; color: var(--main); margin: 10px; font-weight: bold; }
+        input { padding: 12px; background: #000; border: 1px solid #444; color: white; border-radius: 5px; width: 100%; box-sizing: border-box; }
+        
+        #login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 10000; display: flex; align-items: center; justify-content: center; text-align: center; }
     </style>
 </head>
 <body>
 
-    <div id="login-overlay">
-        <div class="box" id="login-form">
-            <h1 style="letter-spacing: 3px;">ARENA</h1>
-            <input type="text" id="l-nick" placeholder="Nadimak" onkeypress="if(event.key==='Enter') login()">
-            <input type="password" id="l-pass" placeholder="Lozinka" onkeypress="if(event.key==='Enter') login()">
-            <button class="btn" onclick="login()">ULAZ U ARENU</button>
-            <p style="font-size: 11px; color: #666; cursor: pointer; margin-top: 15px;" onclick="prikaziZaboravljeno()">Zaboravljena lozinka?</p>
-        </div>
-        <div class="box hidden" id="reg-form">
-            <p style="color:var(--accent)">Postavi tajnu šifru za oporavak:</p>
-            <input type="password" id="r-secret" placeholder="Tajna šifra">
-            <button class="btn" onclick="registriraj()">DOVRŠI</button>
-        </div>
-        <div class="box hidden" id="zaboravljeno-form">
-            <h3>Oporavak Računa</h3>
-            <input id="z-nick" placeholder="Nadimak">
-            <input id="z-pass" placeholder="Nova lozinka">
-            <input id="z-tajna" placeholder="Tajna šifra">
-            <input id="z-razlog" placeholder="Razlog">
-            <button class="btn" onclick="posaljiZahtjev()">POŠALJI ZAHTJEV</button>
+    <div id="login-screen">
+        <div style="background: var(--panel); padding: 40px; border-radius: 15px; border: 1px solid #333; width: 350px;">
+            <h1 style="color: var(--main);">ARENA</h1>
+            <p style="font-size: 12px; color: #888;">Ulazom u Arenu, prihvatate naša pravila i uslove.</p>
+            <div id="login-form">
+                <input id="l-nick" placeholder="Nadimak" onkeydown="if(event.key==='Enter') login()"><br><br>
+                <input type="password" id="l-pass" placeholder="Lozinka" onkeydown="if(event.key==='Enter') login()"><br><br>
+                <button class="nav-btn" style="width:100%" onclick="login()">ULAZ U ARENU</button>
+            </div>
+            <div id="reg-form" class="hidden">
+                <input id="r-secret" placeholder="Tajna šifra"><br><br>
+                <button class="nav-btn" style="width:100%" onclick="register()">DOVRŠI</button>
+            </div>
         </div>
     </div>
     <div id="sidebar">
-        <div class="tabs">
-            <div class="active">UKUPNO</div>
-            <div>DNEVNO</div>
-            <div>ONLINE</div>
+        <div class="sidebar-section">
+            <h4 style="color: var(--main)">ONLINE IGRAČI</h4>
+            <div id="online-list"></div>
         </div>
-        <div id="lb-content" style="flex:1; overflow-y:auto;"></div>
+        <div class="sidebar-section" id="mini-leaderboard">
+            <h4 style="color: var(--gold)">TOP 10 BODOVA</h4>
+            <div id="mini-lb-list"></div>
+        </div>
     </div>
 
-    <div id="app">
-        <div class="nav">
-            <div class="nav-item">KVIZ</div>
-            <div class="nav-item">TRGOVINA</div>
-            <div class="nav-item">PRAVILA</div>
+    <div id="main">
+        <div class="banner-wrap">
+            <div class="banner-text">1vs1 dvoboj vam omogućuje veći broj bodova i nagrada! Izazovite protivnika odmah!</div>
+        </div>
+        
+        <div class="navbar">
+            <button class="nav-btn" onclick="showZone('quiz')">KVIZ</button>
+            <button class="nav-btn" onclick="showZone('chat')">CHAT</button>
+            <button class="nav-btn" onclick="showZone('1vs1')">1vs1 DVOBOJ</button>
+            <button class="nav-btn" onclick="showZone('leaderboard')">TABLICA</button>
+            <button class="nav-btn" onclick="showZone('wheel')">KOLO SREĆE</button>
+            <button class="nav-btn" onclick="showZone('shop')">TRGOVINA</button>
             <div style="flex:1"></div>
             <span id="stat-coins" style="color:var(--gold)">0 💰</span>
-            <div id="my-profile" style="width:35px; height:35px; border-radius:50%; background:#333; cursor:pointer;"></div>
-            <div class="nav-item" style="color:red" onclick="location.reload()">ODJAVA</div>
+            <button class="nav-btn" style="color:red" onclick="location.reload()">ODJAVA</button>
         </div>
 
-        <div id="quiz">
-            <span id="q-kat" class="kat">KATEGORIJA</span>
-            <h1 id="q-text" style="font-size: 3em; margin: 40px 0;">Spremite se...</h1>
-            <input type="text" id="q-ans" placeholder="Upiši odgovor i pritisni Enter" style="width: 70%; font-size: 1.5em; text-align: center;" onkeypress="if(event.key==='Enter') posaljiOdgovor()">
+        <div id="zone-quiz" class="content-zone">
+            <div id="quiz-box">
+                <span id="q-kat" style="color: var(--main); font-weight: bold;">KATEGORIJA</span>
+                <div class="timer-circle" id="timer">30</div>
+                <h2 id="q-text">Spremite se...</h2>
+                <input id="q-ans" placeholder="OVDE UPIŠI ODGOVOR ZA KVIZ..." onkeydown="if(event.key==='Enter') sendAns()">
+            </div>
+            <div id="chat-box"></div>
+            <input id="c-in" placeholder="OVDE PIŠI ZA GLOBALNI CHAT..." onkeydown="if(event.key==='Enter') sendChat()">
         </div>
 
-        <div id="chat"></div>
-        <input id="chat-in" placeholder="Napiši poruku i pritisni Enter..." style="background:#000; border:none; padding:15px; color:white; border-top:1px solid #333;" onkeypress="if(event.key==='Enter') posaljiChat()">
+        <div id="zone-leaderboard" class="content-zone hidden">
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <button class="nav-btn">DNEVNA</button>
+                <button class="nav-btn">TJEDNA</button>
+                <button class="nav-btn">UKUPNA</button>
+            </div>
+            <div id="full-lb" style="background: #111; padding: 20px; border-radius: 10px; overflow-y:auto;"></div>
+        </div>
+        
+        <div id="zone-1vs1" class="content-zone hidden">
+            <h2>Izaberi protivnika za 1vs1:</h2>
+            <div id="duel-list"></div>
+        </div>
     </div>
-
-    <div id="rules-overlay" class="hidden" style="position:fixed; inset:0; background:rgba(0,0,0,0.95); z-index:20000; display:flex; align-items:center; justify-content:center;">
-        <div class="box" style="width:450px;">
-            <h2>Pravila i Uvjeti</h2>
-            <p style="text-align:left; font-size:14px; color:#aaa;">
-                ● Svaki pogrešan odgovor oduzima -2 boda.<br>
-                ● Zabranjeno je varanje i vrijeđanje.<br>
-                ● 1vs1 pobjednik uzima ulog bodova.
-            </p>
-            <button class="btn" onclick="prihvatiRules()">PRIHVAĆAM I ULAZIM</button>
-        </div>
-    </div>
-
     <script>
         const socket = io();
 
-        function login() {
-            socket.emit('pokusaj_prijave', { nadimak: document.getElementById('l-nick').value, lozinka: document.getElementById('l-pass').value });
-        }
+        function login() { socket.emit('pokusaj_prijave', { nadimak: document.getElementById('l-nick').value, lozinka: document.getElementById('l-pass').value }); }
+        socket.on('otvori_registraciju', () => { document.getElementById('login-form').classList.add('hidden'); document.getElementById('reg-form').classList.remove('hidden'); });
+        function register() { socket.emit('registracija', { nadimak: document.getElementById('l-nick').value, lozinka: document.getElementById('l-pass').value, tajna_sifra: document.getElementById('r-secret').value }); }
 
-        socket.on('otvori_registraciju', () => {
-            document.getElementById('login-form').classList.add('hidden');
-            document.getElementById('reg-form').classList.remove('hidden');
-        });
+        socket.on('prijava_uspjesna', u => { document.getElementById('login-screen').classList.add('hidden'); updateStats(u); });
+        
+        function sendAns() { socket.emit('slanje_odgovora', { odgovor: document.getElementById('q-ans').value }); document.getElementById('q-ans').value = ""; }
+        function sendChat() { socket.emit('chat_global', document.getElementById('c-in').value); document.getElementById('c-in').value = ""; }
 
-        function registriraj() {
-            socket.emit('registracija', { 
-                nadimak: document.getElementById('l-nick').value, 
-                lozinka: document.getElementById('l-pass').value, 
-                tajna_sifra: document.getElementById('r-secret').value 
-            });
-        }
-
-        socket.on('prijava_uspjesna', (u) => {
-            document.getElementById('login-overlay').classList.add('hidden');
-            if(!u.prihvacenaPravila) document.getElementById('rules-overlay').classList.remove('hidden');
-            document.getElementById('stat-coins').innerText = u.coinsi + " 💰";
-        });
-
-        function posaljiOdgovor() {
-            const inp = document.getElementById('q-ans');
-            socket.emit('slanje_odgovora', { odgovor: inp.value });
-            inp.value = "";
-        }
-
-        function posaljiChat() {
-            const inp = document.getElementById('chat-in');
-            socket.emit('chat_global', inp.value);
-            inp.value = "";
-        }
-
-        socket.on('novo_pitanje', d => {
-            document.getElementById('q-text').innerText = d.tekst;
-            document.getElementById('q-kat').innerText = d.kat;
-        });
-
-        socket.on('update_leaderboard', data => {
-            const list = document.getElementById('lb-content');
-            list.innerHTML = data.ukupno.map((u, i) => `
-                <div class="row">
-                    <span style="width:25px; color:var(--accent)">${i+1}.</span>
-                    <div style="flex:1"><b>${u.nadimak}</b></div>
-                    <div style="color:var(--accent)">${u.bodovi}</div>
-                </div>
-            `).join('');
-        });
+        socket.on('novo_pitanje', d => { document.getElementById('q-text').innerText = d.tekst; document.getElementById('q-kat').innerText = d.kat; });
+        socket.on('timer_update', s => { document.getElementById('timer').innerText = s; });
 
         socket.on('chat_msg', d => {
-            const box = document.getElementById('chat');
-            box.innerHTML += `<div><b style="color:var(--accent)">${d.od}:</b> ${d.tekst}</div>`;
-            box.scrollTop = box.scrollHeight;
+            const b = document.getElementById('chat-box');
+            b.innerHTML += `<div><b>${d.od}:</b> ${d.tekst}</div>`;
+            b.scrollTop = b.scrollHeight;
         });
 
-        function prihvatiRules() {
-            socket.emit('prihvati_uvjete');
-            document.getElementById('rules-overlay').classList.add('hidden');
+        socket.on('update_online', users => {
+            const list = document.getElementById('online-list');
+            const duelList = document.getElementById('duel-list');
+            const html = users.map(u => `<div class="user-row"><img src="${u.avatar}" class="av-mini"> ${u.nadimak} ${u.aktivniBedz || ''} <b>(${u.bodovi})</b></div>`).join('');
+            list.innerHTML = html;
+            duelList.innerHTML = users.map(u => `<div class="user-row">${u.nadimak} <button class="nav-btn" onclick="socket.emit('izazovi_igraca', '${u.id}')">IZAZOVI</button></div>`).join('');
+        });
+
+        socket.on('update_leaderboard', list => {
+            document.getElementById('mini-lb-list').innerHTML = list.slice(0,10).map((u,i) => `<div>${i+1}. ${u.nadimak} (${u.bodovi})</div>`).join('');
+            document.getElementById('full-lb').innerHTML = `<table><tr style="color:var(--main)"><th>Mesto</th><th>Nadimak</th><th>Bodovi</th></tr>` + 
+                list.map((u,i) => `<tr><td>${i+1}</td><td>${u.nadimak}</td><td>${u.bodovi}</td></tr>`).join('') + `</table>`;
+        });
+
+        function showZone(z) {
+            document.querySelectorAll('.content-zone').forEach(e => e.classList.add('hidden'));
+            document.getElementById('zone-' + z).classList.remove('hidden');
         }
 
-        function prikaziZaboravljeno() {
-            document.getElementById('login-form').classList.add('hidden');
-            document.getElementById('zaboravljeno-form').classList.remove('hidden');
-        }
-
-        function posaljiZahtjev() {
-            alert("Ukoliko su podaci ispravni, administrator će odobriti kroz nekoliko sati.");
-            location.reload();
-        }
-
+        function updateStats(u) { document.getElementById('stat-coins').innerText = u.coinsi + " 💰"; }
+        socket.on('update_stats', updateStats);
         socket.on('greska', m => alert(m));
     </script>
 </body>
