@@ -123,32 +123,43 @@ io.on('connection', (socket) => {
     socket.on('slanje_odgovora', async (odgovor) => {
         if (!trenutnoPitanje || !socket.nadimak) return;
 
-        const tocan = trenutnoPitanje.odgovor.toLowerCase().trim();
-        const upisano = odgovor.toLowerCase().trim();
-        
-        const baza = await fs.readJson(BODOVI_FILE);
-        let u = baza.korisnici.find(x => x.nadimak === socket.nadimak);
-
-        if (upisano === tocan) {
-            if (tacniOdgovoriUKrugu.includes(socket.nadimak)) return;
-            tacniOdgovoriUKrugu.push(socket.nadimak);
-            odgovorenoPuta++;
+        try {
+            const tocan = trenutnoPitanje.odgovor.toLowerCase().trim();
+            const upisano = odgovor.toLowerCase().trim();
             
-            let bodovi = (odgovorenoPuta === 1) ? 7 : 5;
-            // ISPRAVLJENO: Cijela linija koda bez prekida
-            await azurirajBodove(socket.nadimak, bodovi, aktivnaKategorija);
-            
-            u.trenutniNiz = (u.trenutniNiz || 0) + 1;
-            let pMsg = await provjeriPostignuca(u, 'niz');
-            if (pMsg) io.emit('sustav_obavijest', pMsg);
+            const baza = await fs.readJson(BODOVI_FILE);
+            let u = baza.korisnici.find(x => x.nadimak === socket.nadimak);
+            if (!u) return; // Osiguranje ako korisnik nije pronađen
 
-            socket.emit('rezultat_odgovora', { točno: true, osvojeno: bodovi });
-        } else {
-            await azurirajBodove(socket.nadimak, -2, aktivnaKategorija);
-            u.trenutniNiz = 0;
-            socket.emit('rezultat_odgovora', { točno: false, osvojeno: -2 });
+            if (upisano === tocan) {
+                if (tacniOdgovoriUKrugu.includes(socket.nadimak)) return;
+                tacniOdgovoriUKrugu.push(socket.nadimak);
+                odgovorenoPuta++;
+                
+                let bodovi = (odgovorenoPuta === 1) ? 7 : 5;
+                
+                // Prvo ažuriraj lokalni objekt korisnika
+                u.trenutniNiz = (u.trenutniNiz || 0) + 1;
+                
+                // Pozovi funkciju za bodove (ona već sprema bazu unutar sebe)
+                await azurirajBodove(socket.nadimak, bodovi, aktivnaKategorija);
+                
+                let pMsg = await provjeriPostignuca(u, 'niz');
+                if (pMsg) io.emit('sustav_obavijest', pMsg);
+
+                socket.emit('rezultat_odgovora', { točno: true, osvojeno: bodovi });
+            } else {
+                u.trenutniNiz = 0;
+                await azurirajBodove(socket.nadimak, -2, aktivnaKategorija);
+                socket.emit('rezultat_odgovora', { točno: false, osvojeno: -2 });
+            }
+
+            // Konačno spremanje promjena koje su napravljene na objektu 'u' (nizovi, postignuća)
+            await fs.writeJson(BODOVI_FILE, baza, { spaces: 2 });
+
+        } catch (error) {
+            console.error("Greška pri obradi odgovora:", error);
         }
-        await fs.writeJson(BODOVI_FILE, baza);
     });
 
     socket.on('disconnect', () => {
