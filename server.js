@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 
 const app = express();
+app.use(express.static(__dirname));
 const server = http.createServer(app);
 const io = new Server(server);
 
