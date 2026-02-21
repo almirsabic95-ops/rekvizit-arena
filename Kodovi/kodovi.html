@@ -1,0 +1,904 @@
+// LOGIN SA SVIM POLJIMA, GUMBOM I ZABORAVLJENOM LOZINKOM
+
+<div id="login-screen" class="container">
+    <h1>🏟️ Rekvizit Arena</h1>
+    <input type="text" id="login-nadimak" placeholder="Nadimak">
+    <input type="password" id="login-lozinka" placeholder="Lozinka">
+    <button onclick="pokreniLogin()">Ulaz u Arenu</button>
+    <br>
+    <p style="cursor:pointer; text-decoration: underline; font-size: 14px; color: #aaa;" 
+       onclick="prikaziZaboravljeno()">Zaboravljena lozinka?</p>
+</div>
+
+<div id="modal-prva-prijava" class="modal hidden">
+    <div class="modal-content">
+        <h3>Dobrodošli! (Prva prijava)</h3>
+        <p>Postavite tajnu šifru za budući oporavak računa:</p>
+        <input type="password" id="input-tajna" placeholder="Tajna šifra">
+        <button onclick="spremiTajnuIIdiNaPravila()">Potvrdi</button>
+    </div>
+</div>
+
+<div id="modal-pravila" class="modal hidden">
+    <div class="modal-content">
+        <h3>📜 Pravila i Uslovi</h3>
+        <p>Prihvaćate li pravila Arene i sve buduće izmjene?</p>
+        <button onclick="prihvatiPravilaIFinaliziraj()">Prihvaćam i ulazim</button>
+    </div>
+</div>
+
+// FORMA ZA ZABORAVLJENU LOZINKU
+
+function prikaziZaboravljeno() {
+    let razlog = prompt("Odaberite razlog:\n1. Nova lozinka\n2. Zaboravljena lozinka");
+    if (!razlog) return;
+
+    // Prikazuje formu za oporavak
+    document.getElementById('recovery-modal').classList.remove('hidden');
+    
+    // Ako je zaboravljena lozinka (opcija 2), makni polje za lozinku
+    if (razlog === "2") {
+        document.getElementById('polje-stara-lozinka').classList.add('hidden');
+    } else {
+        document.getElementById('polje-stara-lozinka').classList.remove('hidden');
+    }
+}
+
+function posaljiZahtjevAdminu() {
+    // Simulacija slanja adminu
+    alert("Ukoliko su podaci ispravni, administrator će odobriti kroz nekoliko sati.");
+    document.getElementById('recovery-modal').classList.add('hidden');
+}
+
+// OTVARANJE PROZORA ZA TAJNU šifru
+
+/* 1. Klasa za sakrivanje */
+.hidden { 
+    display: none !important; 
+}
+
+/* 2. Izgled skočnog prozora */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85); /* Zatamni pozadinu */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000; /* Da bude ispred svega */
+}
+
+/* 3. Izgled okvira unutar prozora */
+.modal-content {
+    background: #1e1e1e;
+    padding: 30px;
+    border-radius: 15px;
+    border: 2px solid #007bff;
+    text-align: center;
+    width: 90%;
+    max-width: 400px;
+}
+
+// SIDEBOARD SUČELJE (TOP10 ONLINE)
+
+<style>
+    #sideboard {
+        position: fixed;
+        right: 0;
+        top: 0;
+        width: 220px;
+        height: 100vh;
+        background: #161616;
+        border-left: 2px solid #007bff;
+        padding: 15px;
+        overflow-y: auto;
+        text-align: left;
+        font-family: 'Segoe UI', sans-serif;
+    }
+    .sb-naslov { color: #007bff; font-weight: bold; border-bottom: 1px solid #333; margin-bottom: 10px; padding-bottom: 5px; text-transform: uppercase; font-size: 14px; }
+    .top-igrac { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
+    .top-igrac .rank { color: gold; font-weight: bold; margin-right: 5px; }
+    .online-igrac { display: flex; align-items: center; font-size: 13px; margin-bottom: 5px; }
+    .status-dot { width: 8px; height: 8px; background: #28a745; border-radius: 50%; margin-right: 8px; box-shadow: 0 0 5px #28a745; }
+</style>
+
+<div id="sideboard">
+    <div class="sb-naslov">🏆 TOP 10 ARENA</div>
+    <div id="top-ljestvica">
+        </div>
+
+    <div class="sb-naslov" style="margin-top: 30px;">🟢 ONLINE IGRAČI</div>
+    <div id="online-lista">
+        </div>
+</div>
+
+// PRIKAZIVANJE PODATAKA ONLINE ZA SIDEBOARD (DIZAJN)
+
+socket.on('update_sideboard', (data) => {
+    // 1. Osvježi Top 10
+    const topDiv = document.getElementById('top-ljestvica');
+    topDiv.innerHTML = data.top.map((igrac, index) => `
+        <div class="top-igrac">
+            <span><span class="rank">${index + 1}.</span> ${igrac.nadimak}</span>
+            <span style="color: #aaa;">${igrac.ukupni_bodovi} b</span>
+        </div>
+    `).join('');
+
+    // 2. Osvježi Online listu
+    const onlineDiv = document.getElementById('online-lista');
+    onlineDiv.innerHTML = data.online.map(nadimak => `
+        <div class="online-igrac">
+            <div class="status-dot"></div>
+            <span>${nadimak}</span>
+        </div>
+    `).join('');
+});
+
+// PROFIL IGRAČA
+
+<style>
+    .profile-card {
+        background: #1e1e1e;
+        border: 1px solid #333;
+        padding: 15px;
+        border-radius: 12px;
+        display: inline-block;
+        text-align: center;
+        margin-top: 20px;
+    }
+    .avatar-wrapper {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        margin: 0 auto 10px;
+    }
+    .main-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        margin-top: 10px;
+        object-fit: cover;
+    }
+    /* Okvir koji se "lijepi" preko avatara */
+    .avatar-frame {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none; /* Da ne smeta kliku na avatar */
+    }
+    .badge-container {
+        display: flex;
+        justify-content: center;
+        gap: 5px;
+        margin-top: 5px;
+    }
+    .badge-icon { width: 20px; height: 20px; }
+</style>
+
+<div class="profile-card">
+    <div class="avatar-wrapper">
+        <img id="prikaz-avara" src="default-avatar.png" class="main-avatar">
+        <img id="prikaz-okvira" src="basic-frame.png" class="avatar-frame">
+    </div>
+    <h3 id="prikaz-nadimka">Igrač</h3>
+    <div class="badge-container" id="prikaz-bedzeva">
+        </div>
+    <p style="color: gold; font-weight: bold;">💰 <span id="prikaz-coinsa">0</span></p>
+</div>
+
+// SLANJE PODATAKA SERVERU ZA PROFIL IGRAČA
+
+socket.on('prijavljen_uspjeh', (u) => {
+    // Postavljanje vizualnih dijelova profila
+    document.getElementById('prikaz-nadimka').innerText = u.nadimak;
+    document.getElementById('prikaz-avara').src = u.avatarUrl;
+    document.getElementById('prikaz-okvira').src = u.okvirUrl;
+    document.getElementById('prikaz-coinsa').innerText = u.coinsi;
+
+    // Generiranje bedževa
+    const bedzDiv = document.getElementById('prikaz-bedzeva');
+    bedzDiv.innerHTML = u.bedzevi.map(b => `<img src="/img/badges/${b}.png" class="badge-icon" title="${b}">`).join('');
+});
+
+// GLOBALNI CHAT SUČELJE
+
+<style>
+    #chat-kontejner {
+        width: 100%;
+        max-width: 600px;
+        background: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 10px;
+        margin: 20px auto;
+        display: flex;
+        flex-direction: column;
+    }
+    #chat-poruke {
+        height: 300px;
+        overflow-y: auto;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        text-align: left;
+    }
+    .poruka-red { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+    .chat-nadimak { color: #007bff; font-weight: bold; cursor: pointer; }
+    .chat-tekst { color: #eee; }
+    .chat-vrijeme { color: #555; font-size: 10px; margin-left: auto; }
+    .mini-bedz { width: 16px; height: 16px; }
+
+    #chat-input-zona { display: flex; border-top: 1px solid #333; padding: 10px; }
+    #chat-input-zona input { flex: 1; background: #222; border: 1px solid #444; color: white; padding: 8px; border-radius: 5px; }
+    #chat-input-zona button { margin-left: 10px; background: #007bff; padding: 8px 15px; }
+</style>
+
+<div id="chat-kontejner">
+    <div id="chat-poruke"></div>
+    <div id="chat-input-zona">
+        <input type="text" id="chat-poruka-input" placeholder="Napiši poruku..." onkeydown="if(event.key==='Enter') posaljiChatPoruku()">
+        <button onclick="posaljiChatPoruku()">POŠALJI</button>
+    </div>
+</div>
+
+// GLOBALNI CHAT PRIKAZIVANJE
+
+function posaljiChatPoruku() {
+    const input = document.getElementById('chat-poruka-input');
+    if (input.value.trim() !== "") {
+        socket.emit('chat_poruka_slanje', input.value);
+        input.value = "";
+    }
+}
+
+socket.on('chat_poruka_prijem', (data) => {
+    const box = document.getElementById('chat-poruke');
+    
+    // Generiramo HTML za bedževe pored imena
+    const bedzeviHtml = data.bedzevi.map(b => `<img src="/img/badges/${b}.png" class="mini-bedz">`).join('');
+
+    const htmlPoruke = `
+        <div class="poruka-red">
+            <span class="chat-bedzevi">${bedzeviHtml}</span>
+            <span class="chat-nadimak" onclick="otvoriProfil('${data.nadimak}')">${data.nadimak}:</span>
+            <span class="chat-tekst">${data.tekst}</span>
+            <span class="chat-vrijeme">${data.vrijeme}</span>
+        </div>
+    `;
+
+    box.innerHTML += htmlPoruke;
+    box.scrollTop = box.scrollHeight; // Automatski skrolaj na zadnju poruku
+});
+
+// SUČELJE KVIZA
+
+<style>
+    #kviz-ekran { background: #121212; padding: 30px; border-radius: 15px; border: 2px solid #333; position: relative; }
+    #kviz-tajmer { font-size: 80px; font-weight: bold; color: #28a745; margin: 20px 0; text-shadow: 0 0 15px rgba(40, 167, 69, 0.4); }
+    .tajmer-upozorenje { color: #ffc107 !important; } /* Žuto na 15s */
+    .tajmer-hitno { color: #dc3545 !important; animation: pulsiranje 0.5s infinite; } /* Crveno na 10s */
+    
+    @keyframes pulsiranje { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+    #lista-pogodaka { height: 50px; color: #00ff00; font-weight: bold; font-style: italic; }
+    .input-arena { width: 100%; padding: 15px; background: #222; border: 2px solid #444; color: white; font-size: 20px; text-align: center; }
+</style>
+
+<div id="kviz-ekran" class="hidden">
+    <div id="kviz-tajmer">30</div>
+    <div id="pitanje-tekst" style="font-size: 24px; min-height: 80px;">Učitavanje pitanja...</div>
+    
+    <div id="lista-pogodaka"></div> <input type="text" id="kviz-odgovor" class="input-arena" placeholder="Upiši odgovor..." 
+           onkeydown="if(event.key==='Enter') posaljiKvizOdgovor()">
+    
+    <button onclick="posaljiKvizOdgovor()" style="width: 100%; margin-top: 10px;">POŠALJI (Enter)</button>
+</div>
+
+// LOGIKA PODATAKA ZA KVIZA I CS 1.6 ZVUKOVI
+
+socket.on('vrijeme_update', (s) => {
+    const t = document.getElementById('kviz-tajmer');
+    t.innerText = s;
+    
+    // Dinamička promjena boja (točka 13)
+    if (s <= 10) t.className = "tajmer-hitno";
+    else if (s <= 15) t.className = "tajmer-upozorenje";
+    else t.className = "";
+});
+
+// Točka 14: Netko je pogodio!
+socket.on('igrac_pogodio', (data) => {
+    const lista = document.getElementById('lista-pogodaka');
+    lista.innerHTML = `✅ ${data.nadimak} je pogodio! (+${data.bodovi})`;
+    
+    // Točka 20: CS 1.6 Zvuk za pogodak (npr. 'headshot')
+    new Audio('/sounds/headshot.mp3').play();
+    
+    // Makni natpis nakon 2 sekunde
+    setTimeout(() => { lista.innerHTML = ""; }, 2000);
+});
+
+function posaljiKvizOdgovor() {
+    const input = document.getElementById('kviz-odgovor');
+    socket.emit('provjera_odgovora', input.value);
+    input.value = ""; // Očisti polje
+}
+
+// SUČELJE 1VS1 DVOBOJA
+
+<style>
+    #dvoboj-ekran { background: linear-gradient(45deg, #4b0000, #000); border: 3px solid #ff4d4d; padding: 20px; }
+    .duel-stats { display: flex; justify-content: space-between; margin-bottom: 20px; }
+    .player-box { text-align: center; width: 45%; }
+    .hp-bar { width: 100%; height: 20px; background: #333; border-radius: 10px; overflow: hidden; }
+    .hp-fill { height: 100%; background: #dc3545; width: 100%; transition: width 0.3s; }
+</style>
+
+<div id="dvoboj-ekran" class="modal hidden">
+    <div class="modal-content" style="max-width: 800px;">
+        <h1 style="color: #ff4d4d;">🥊 1vs1 DVOKOJ 🥊</h1>
+        <div class="duel-stats">
+            <div class="player-box">
+                <h3 id="duel-p1-ime">Igrač 1</h3>
+                <div class="hp-bar"><div id="duel-p1-hp" class="hp-fill"></div></div>
+            </div>
+            <div style="font-size: 40px; font-weight: bold;">VS</div>
+            <div class="player-box">
+                <h3 id="duel-p2-ime">Igrač 2</h3>
+                <div class="hp-bar"><div id="duel-p2-hp" class="hp-fill"></div></div>
+            </div>
+        </div>
+        <div id="duel-pitanje" style="font-size: 20px; margin: 20px;"></div>
+        <input type="text" id="duel-input" placeholder="Brže od protivnika!">
+    </div>
+</div>
+
+// HODAJUĆI BANNER ZA 1VS1 DVOBOJ
+
+<div id="reklama-dvoboj" style="background: #ffc107; color: black; overflow: hidden; white-space: nowrap; padding: 5px; font-weight: bold;">
+    <div class="marquee">
+        🔥 1vs1 DVOKOJ SOBA JE OTVORENA! Pobjedi u dvoboju i osvoji DUPLO više coinsa i unikatne bedževe! 🏆 Izazovi bilo koga iz Online liste desno! 🔥
+    </div>
+</div>
+
+<style>
+    .marquee {
+        display: inline-block;
+        padding-left: 100%;
+        animation: marquee 20s linear infinite;
+    }
+    @keyframes marquee {
+        0% { transform: translate(0, 0); }
+        100% { transform: translate(-100%, 0); }
+    }
+</style>
+
+// NAGRADE I ZVUKOVI (1VS1)
+
+socket.on('duel_pobjeda', (data) => {
+    // CS 1.6 zvuk za pobjedu
+    new Audio('/sounds/victory.mp3').play();
+    
+    alert(`ČESTITAMO! Pobijedili ste u dvoboju i osvojili ${data.nagrada} coinsa!`);
+    
+    // Zatvori duel ekran i vrati u menu
+    document.getElementById('dvoboj-ekran').classList.add('hidden');
+});
+
+// SUČELJE TRGOVINE
+
+<style>
+    #trgovina-ekran { background: #151515; padding: 20px; color: white; }
+    .shop-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+    .shop-item {
+        background: #222;
+        border: 2px solid #333;
+        border-radius: 10px;
+        padding: 15px;
+        transition: 0.3s;
+        text-align: center;
+    }
+    .shop-item:hover { border-color: #007bff; transform: translateY(-5px); }
+    .shop-img { width: 80px; height: 80px; margin-bottom: 10px; object-fit: contain; }
+    .price-tag { color: gold; font-weight: bold; display: block; margin: 10px 0; }
+    .btn-buy { background: #28a745; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+    .btn-buy:disabled { background: #555; cursor: not-allowed; }
+</style>
+
+<div id="trgovina-ekran" class="modal hidden">
+    <div class="modal-content" style="max-width: 900px; width: 95%;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2>🛒 ARENA TRGOVINA</h2>
+            <h3 style="color: gold;">Vaši Coinsi: <span id="shop-coins-prikaz">0</span> 💰</h3>
+            <button onclick="zatvoriTrgovinu()" style="background:red;">X</button>
+        </div>
+        
+        <div class="shop-grid" id="shop-items-container">
+            </div>
+    </div>
+</div>
+
+// PRIKAZ ARTIKALA
+
+function otvoriTrgovinu() {
+    document.getElementById('trgovina-ekran').classList.remove('hidden');
+    // Tražimo od servera listu artikala
+    socket.emit('get_shop_items');
+}
+
+socket.on('shop_data', (artikli) => {
+    const container = document.getElementById('shop-items-container');
+    container.innerHTML = artikli.map(a => `
+        <div class="shop-item">
+            <img src="/img/shop/${a.src}" class="shop-img">
+            <div style="font-weight:bold;">${a.ime}</div>
+            <span class="price-tag">${a.cijena} 💰</span>
+            <button class="btn-buy" onclick="kupi('${a.id}')">KUPI</button>
+        </div>
+    `).join('');
+});
+
+function kupi(id) {
+    if(confirm("Želite li kupiti ovaj artikl?")) {
+        socket.emit('kupi_artikl', id);
+    }
+}
+
+// SUČELJE PRAVILA KVIZA
+
+<div id="modal-pravila" class="modal hidden">
+    <div class="modal-content" style="max-width: 500px; text-align: left;">
+        <h2 style="color: #007bff; text-align: center;">📜 Pravila Rekvizit Arene</h2>
+        <div style="max-height: 300px; overflow-y: auto; padding-right: 10px; font-size: 14px; line-height: 1.6;">
+            <p>1. <b>Poštovanje:</b> Vrijeđanje na nacionalnoj ili bilo kojoj drugoj osnovi rezultirat će trajnim banom.</p>
+            <p>2. <b>Varanje:</b> Korištenje pomoćnih programa ili vanjskih skripti strogo je zabranjeno.</p>
+            <p>3. <b>Više računa:</b> Svaki igrač smije imati samo jedan račun (Account).</p>
+            <p>4. <b>Ponašanje u chatu:</b> Spamovanje i reklamiranje drugih stranica nije dozvoljeno.</p>
+            <hr style="border: 0.5px solid #333;">
+            <p style="font-size: 12px; color: #aaa;">Prihvaćanjem pravila slažete se sa svim trenutnim i budućim uvjetima korištenja Rekvizit Arene.</p>
+        </div>
+        <button onclick="prihvatiPravilaFinal()" 
+                style="width: 100%; background: #28a745; margin-top: 20px; font-weight: bold;">
+            PRIHVAĆAM I ULAZIM U ARENU
+        </button>
+    </div>
+</div>
+
+// POVEZIVANJE FLOW PRAVILA KVIZA
+
+function prihvatiPravilaFinal() {
+    // window.trenutniKorisnikId smo spremili ranije tijekom logina (Bilješka 4)
+    if (window.trenutniKorisnikId) {
+        socket.emit('prihvati_pravila_final', window.trenutniKorisnikId);
+    }
+}
+
+socket.on('pravila_prihvacena_uspjeh', (korisnik) => {
+    // 1. Sakrij modal pravila
+    document.getElementById('modal-pravila').classList.add('hidden');
+    
+    // 2. Makni login ekran i prikaži glavni meni
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('main-menu').classList.remove('hidden');
+    
+    // 3. Pokreni sideboard i ostale module
+    prijavljenUspjesnoUI(korisnik);
+});
+
+// VIZUALNI IZGLED KOLA SREĆE
+
+<style>
+    .wheel-container { position: relative; width: 300px; height: 300px; margin: 0 auto; }
+    #wheel {
+        width: 100%; height: 100%;
+        border-radius: 50%;
+        border: 5px solid #333;
+        transition: transform 4s cubic-bezier(0.15, 0, 0.15, 1); /* Efekat kočenja */
+        background: conic-gradient(
+            #ff4d4d 0deg 60deg, #ffc107 60deg 120deg, 
+            #28a745 120deg 180deg, #007bff 180deg 240deg, 
+            #6f42c1 240deg 300deg, #e83e8c 300deg 360deg
+        );
+    }
+    .wheel-pointer {
+        position: absolute; top: -10px; left: 50%;
+        transform: translateX(-50%);
+        width: 0; height: 0; 
+        border-left: 15px solid transparent; border-right: 15px solid transparent;
+        border-top: 30px solid white; z-index: 10;
+    }
+</style>
+
+<div id="modal-kolo" class="modal hidden">
+    <div class="modal-content">
+        <h2>🎡 KOLO SREĆE</h2>
+        <div class="wheel-container">
+            <div class="wheel-pointer"></div>
+            <div id="wheel"></div>
+        </div>
+        <button id="spin-btn" onclick="pokreniKolo()" style="margin-top: 20px;">ZAVRTI (BESPLATNO)</button>
+        <p id="kolo-status"></p>
+    </div>
+</div>
+
+// ANIMACIJA I CS 1.6 ZVUKOVI KOLA SREĆE
+
+function pokreniKolo() {
+    socket.emit('zavrti_kolo');
+    document.getElementById('spin-btn').disabled = true;
+}
+
+socket.on('kolo_rezultat', (data) => {
+    const tocak = document.getElementById('wheel');
+    tocak.style.transform = `rotate(${data.stupnjevi}deg)`;
+    
+    // Zvuk okretanja (možeš koristiti CS 1.6 zvuk npr. "blip")
+    let audio = new Audio('/sounds/spin.mp3');
+    audio.play();
+
+    setTimeout(() => {
+        alert("ČESTITAMO! Osvojili ste: " + data.nagrada);
+        // CS 1.6 zvuk za uspjeh
+        new Audio('/sounds/tada.mp3').play();
+        location.reload(); // Osvježi profil da se vide nagrade
+    }, 4500); // Malo duže od trajanja animacije
+});
+
+// VIZUALNI PRIKAZ TOČNOG ODGOVORA
+
+socket.on('igrac_pogodio', (data) => {
+    const lista = document.getElementById('lista-pogodaka');
+    
+    // Kreiraj novi element za obavijest
+    const info = document.createElement('div');
+    info.className = "pogodak-notifikacija";
+    info.innerHTML = `⭐ <b>${data.nadimak}</b> je pogodio! <span style="color:gold">+${data.bodovi} bodova</span>`;
+    
+    lista.appendChild(info);
+
+    // Točka 14: Natpis nestaje nakon 3 sekunde
+    setTimeout(() => {
+        info.style.opacity = "0";
+        setTimeout(() => info.remove(), 500);
+    }, 3000);
+});
+
+// VIZUALNI PRIKAZ COINSA
+
+<style>
+    .coins-display {
+        color: gold;
+        font-weight: bold;
+        background: rgba(0,0,0,0.5);
+        padding: 5px 15px;
+        border-radius: 20px;
+        border: 1px solid gold;
+    }
+    .animacija-novac { animation: shake 0.5s; }
+    @keyframes shake {
+        0% { transform: rotate(0deg); }
+        25% { transform: rotate(5deg); }
+        50% { transform: rotate(-5deg); }
+        100% { transform: rotate(0deg); }
+    }
+</style>
+
+<div class="coins-display" id="coin-box">
+    💰 <span id="trenutni-coinsi">0</span>
+</div>
+
+<script>
+    socket.on('update_coins', (noviIznos) => {
+        const box = document.getElementById('coin-box');
+        document.getElementById('trenutni-coinsi').innerText = noviIznos;
+        
+        // Dodaj animaciju
+        box.classList.add('animacija-novac');
+        setTimeout(() => box.classList.remove('animacija-novac'), 500);
+    });
+</script>
+
+// PRIKAZ BEDŽEVA I OKVIRA ZA AVATAR
+
+<style>
+    .streak-badge {
+        background: linear-gradient(to right, #ff4b1f, #ff9068);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 5px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+</style>
+
+<div id="streak-info" class="streak-badge">
+    🔥 <span id="streak-broj">1</span> dana u nizu
+</div>
+
+<script>
+    socket.on('streak_update', (broj) => {
+        document.getElementById('streak-broj').innerText = broj;
+    });
+    
+    socket.on('specijalna_nagrada', (poruka) => {
+        // Pozovi modal ili alert sa zvukom pobjede
+        alert(poruka);
+        new Audio('/sounds/celebration.mp3').play();
+    });
+</script>
+
+// ADMIN SUČELJE (INDEX.HTML ILI ADMIN.HTML)
+
+<style>
+    #admin-panel { background: #0b0b0b; border: 2px red solid; color: white; padding: 20px; }
+    .admin-tablica { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    .admin-tablica th, .admin-tablica td { border: 1px solid #333; padding: 8px; text-align: center; }
+    .btn-ban { background: #dc3545; color: white; border: none; padding: 5px; cursor: pointer; }
+    .btn-shadow { background: #6f42c1; color: white; border: none; padding: 5px; cursor: pointer; }
+    .btn-coin { background: #ffc107; color: black; border: none; padding: 5px; cursor: pointer; }
+</style>
+
+<div id="admin-panel" class="modal hidden">
+    <div class="modal-content" style="max-width: 1000px;">
+        <h2>🛠️ ARENA ADMIN KONTROLA</h2>
+        <button onclick="zatvoriAdmin()">Zatvori</button>
+        <table class="admin-tablica">
+            <thead>
+                <tr>
+                    <th>Nadimak</th>
+                    <th>Bodovi</th>
+                    <th>Coinsi</th>
+                    <th>Status</th>
+                    <th>Akcije</th>
+                </tr>
+            </thead>
+            <tbody id="admin-lista-igraca">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+// PRIKAZ I POZIVANJE ADMINA
+
+function otvoriAdminPanel() {
+    socket.emit('admin_zahtjev_podataka');
+    document.getElementById('admin-panel').classList.remove('hidden');
+}
+
+socket.on('admin_podaci_odgovor', (igraci) => {
+    const lista = document.getElementById('admin-lista-igraca');
+    lista.innerHTML = igraci.map(i => `
+        <tr>
+            <td>${i.nadimak}</td>
+            <td>${i.ukupni_bodovi}</td>
+            <td>${i.coinsi}</td>
+            <td>${i.isShadowbanned ? '🔇 SHADOW' : '✅ OK'}</td>
+            <td>
+                <button class="btn-shadow" onclick="adminShadow('${i.nadimak}')">Shadow</button>
+                <button class="btn-coin" onclick="adminCoin('${i.nadimak}')">+100💰</button>
+                <button class="btn-ban" onclick="adminKick('${i.nadimak}')">KICK</button>
+            </td>
+        </tr>
+    `).join('');
+});
+
+function adminShadow(nick) { socket.emit('admin_shadowban', nick); }
+function adminCoin(nick) { socket.emit('admin_dodaj_coinse', { nadimak: nick, iznos: 100 }); }
+
+// ANTI CHEAT I SPLIT SCREEN
+
+let blokiranZbogIzlaska = false;
+let idAktivnogPitanjaPriIzlasku = null;
+
+// Provjera širine prozora (Protiv Split-Screena)
+function provjeriVelicinuProzora() {
+    if (window.innerWidth < 800 && !isMobile()) { // Ako je desktop, a prozor je preuzak
+        document.getElementById('kviz-odgovor').disabled = true;
+        document.getElementById('kviz-odgovor').placeholder = "Raširite prozor za igru!";
+    } else {
+        if (!blokiranZbogIzlaska) {
+            document.getElementById('kviz-odgovor').disabled = false;
+            document.getElementById('kviz-odgovor').placeholder = "Upiši odgovor...";
+        }
+    }
+}
+
+window.addEventListener('resize', provjeriVelicinuProzora);
+
+// Detekcija izlaska
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === 'hidden' && kvizUTijeku) {
+        blokiranZbogIzlaska = true;
+        idAktivnogPitanjaPriIzlasku = trenutniIdPitanja; // Pamtimo na kojem je pitanju "varao"
+        
+        document.getElementById('kviz-odgovor').disabled = true;
+        document.getElementById('kviz-odgovor').placeholder = "Blokirani ste do sljedećeg pitanja!";
+        
+        socket.emit('log_sumnje', 'Igrač je napustio tab.');
+    }
+});
+
+// Resetiranje blokade kad krene novo pitanje
+socket.on('novo_pitanje', (data) => {
+    trenutniIdPitanja = data.id; // Server šalje ID svakog pitanja
+    blokiranZbogIzlaska = false;
+    document.getElementById('kviz-odgovor').disabled = false;
+    document.getElementById('kviz-odgovor').placeholder = "Upiši odgovor...";
+});
+
+// HODAJUĆI BANNER ZA NAJAVU UČILICE
+
+<div class="promo-banner">
+    <div class="marquee-tekst">
+        🚀 UČILICA - USKORO DOLAZI U REKVIZIT ARENA! Testiraj svoje znanje iz osnovne i srednje škole i osvoji bogate nagrade! 🎓 
+    </div>
+</div>
+
+<style>
+    .promo-banner {
+        background: linear-gradient(90deg, #ff0000, #990000);
+        color: white;
+        padding: 8px 0;
+        overflow: hidden;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border-bottom: 2px solid gold;
+    }
+    .marquee-tekst {
+        display: inline-block;
+        white-space: nowrap;
+        animation: kretanjeBannera 25s linear infinite;
+    }
+    @keyframes kretanjeBannera {
+        0% { transform: translateX(100%); }
+        100% { transform: translateX(-100%); }
+    }
+</style>
+
+// SUČELJE PRIVATNIH PORUKA
+
+<div id="pm-prozori-kontejner"></div>
+
+<style>
+    #pm-prozori-kontejner {
+        position: fixed;
+        bottom: 0;
+        right: 220px; /* Da ne prekriva Sideboard */
+        display: flex;
+        gap: 10px;
+        z-index: 1000;
+    }
+    .pm-prozor {
+        width: 250px;
+        background: #1a1a1a;
+        border: 2px solid #007bff;
+        border-radius: 10px 10px 0 0;
+        display: flex;
+        flex-direction: column;
+    }
+    .pm-header {
+        background: #007bff;
+        color: white;
+        padding: 8px;
+        display: flex;
+        justify-content: space-between;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    .pm-poruke {
+        height: 200px;
+        overflow-y: auto;
+        padding: 10px;
+        font-size: 13px;
+        background: #111;
+    }
+    .pm-input-zona { display: flex; border-top: 1px solid #333; }
+    .pm-input-zona input { flex: 1; background: #222; border: none; color: white; padding: 5px; }
+    .poruka-ja { color: #007bff; text-align: right; margin-bottom: 5px; }
+    .poruka-on { color: #28a745; text-align: left; margin-bottom: 5px; }
+</style>
+
+// FUNKCIONALNOST GUMBA I PROZORA
+
+// Ovu funkciju pozivaš iz Online liste (Bilješka 2)
+// Primjer: <li onclick="otvoriPrivatniChat('${korisnik.nadimak}')">
+function otvoriPrivatniChat(nadimak) {
+    if (document.getElementById(`pm-${nadimak}`)) return; // Već otvoren
+
+    const html = `
+        <div class="pm-prozor" id="pm-${nadimak}">
+            <div class="pm-header">
+                <span>💬 ${nadimak}</span>
+                <span onclick="document.getElementById('pm-${nadimak}').remove()">✖</span>
+            </div>
+            <div class="pm-poruke" id="pm-poruke-${nadimak}"></div>
+            <div class="pm-input-zona">
+                <input type="text" placeholder="Tipkaj..." 
+                       onkeydown="if(event.key==='Enter') slanjePM('${nadimak}')" id="pm-input-${nadimak}">
+            </div>
+        </div>
+    `;
+    document.getElementById('pm-prozori-kontejner').innerHTML += html;
+}
+
+function slanjePM(nadimak) {
+    const input = document.getElementById(`pm-input-${nadimak}`);
+    const tekst = input.value.trim();
+    if (tekst !== "") {
+        socket.emit('posalji_privatnu_poruku', { kome: nadimak, tekst: tekst });
+        input.value = "";
+    }
+}
+
+// Prikaz poruke kod pošiljatelja
+socket.on('potvrda_privatne_poruke', (data) => {
+    prikaziUMalomProzoru(data.kome, 'Ja: ' + data.tekst, 'poruka-ja');
+});
+
+// Prijem poruke kod primatelja
+socket.on('prijem_privatne_poruke', (data) => {
+    otvoriPrivatniChat(data.od); // Automatski otvori prozor ako već nije
+    prikaziUMalomProzoru(data.od, data.od + ': ' + data.tekst, 'poruka-on');
+    new Audio('/sounds/pm_notify.mp3').play(); // Zvuk notifikacije
+});
+
+function prikaziUMalomProzoru(nadimak, tekst, klasa) {
+    const box = document.getElementById(`pm-poruke-${nadimak}`);
+    if (box) {
+        box.innerHTML += `<div class="${klasa}">${tekst}</div>`;
+        box.scrollTop = box.scrollHeight;
+    }
+}
+
+// LOGIKA I SUČELJE SERVERSKOG MODA IZAZOVA
+
+/* Efekt za Iznenadnu Borbu */
+.iznenadna-borba-aktivna {
+    border: 10px solid #ff0000 !important;
+    box-shadow: inset 0 0 50px #ff0000;
+    animation: pulsiranje 1s infinite alternate;
+}
+
+@keyframes pulsiranje {
+    from { opacity: 1; }
+    to { opacity: 0.7; }
+}
+
+/* Efekt za Izazov Profesora */
+.profesor-mod-aktivno {
+    border: 10px solid #007bff !important;
+    background-color: #001a33;
+}
+
+// REAKCIJA SERVERSKOG MODA IZAZOVA (UBACUJE SE U SCRIPT)
+
+// Slušaj server za Iznenadnu Borbu
+socket.on('start_iznenadna_borba', () => {
+    document.getElementById('kviz-prostor').classList.add('iznenadna-borba-aktivna');
+    alert("PAŽNJA: Krenula je IZNENADNA BORBA! Bodovi su dupli, ali i kazne!");
+});
+
+socket.on('kraj_iznenadne_borbe', () => {
+    document.getElementById('kviz-prostor').classList.remove('iznenadna-borba-aktivna');
+    alert("Iznenadna borba je završila. Sada ste mirni 2 sata.");
+});
+
+// Slušaj server za Izazov Profesora
+socket.on('obavijest_profesor', (poruka) => {
+    document.getElementById('kviz-prostor').classList.add('profesor-mod-aktivno');
+    // Pokaži hodajući banner koji smo ranije napravili
+    document.getElementById('ucilica-banner').innerText = poruka;
+});
+
+// 
