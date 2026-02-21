@@ -1,9 +1,13 @@
 const express = require('express');
 const app = express();
 const path = require('path');
+const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static('public')); // Ovdje stavi index.html
+app.use(express.static(__dirname)); // Ovdje stavi index.html
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 app.post('/provjeri-datum', (req, res) => {
     const { datum } = req.body;
@@ -17,6 +21,6 @@ app.post('/provjeri-datum', (req, res) => {
     }
 });
 
-app.listen(3000, () => {
-    console.log('Server radi na portu 3000. Rođendanska čestitka je spremna!');
+app.listen(PORT, () => {
+    console.log(`Server radi na portu ${PORT}. Rođendanska čestitka je spremna!`);
 });
