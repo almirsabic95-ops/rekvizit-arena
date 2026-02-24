@@ -1,77 +1,51 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const mongoose = require('mongoose');
+const path = require('path');
 const fs = require('fs-extra');
-
-// --- KONFIGURACIJA ---
-const PORT = 3000;
-const BODOVI_FILE = './bodovi.json';
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+const PORT = process.env.PORT || 3000;
+
+// --- POVEZIVANJE NA MONGO DB ---
+// Ovdje zalijepi svoj URI iz MongoDB Atlasa
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://rekvizit:<db_password>@rekvizit.o6ugw5r.mongodb.net/?appName=Rekvizit';
+
+mongoose.connect(MONGO_URI)
+    .then(() => console.log('Povezan na MongoDB Cloud 🚀'))
+    .catch(err => console.error('Greška pri povezivanju na Mongo:', err));
+
+// --- DEFINICIJA MODELA (Shema korisnika) ---
+const KorisnikSchema = new mongoose.Schema({
+    nadimak: { type: String, required: true, unique: true },
+    lozinka: { type: String, required: true },
+    tajna_sifra: String,
+    ukupni_bodovi: { type: Number, default: 0 },
+    bedzevi: [String],
+    streak: { type: Number, default: 0 },
+    klan: { type: String, default: "Nema" }
+});
+
+const Korisnik = mongoose.model('Korisnik', KorisnikSchema);
+
 app.use(express.static('.'));
 app.use(express.json());
 
-// --- GLOBALNE VARIJABLE ZA KVIZ ---
+// --- KVIZ VARIJABLE ---
 let trenutnoPitanje = null;
-let odgovorenoPuta = 0;
 let tajmerInterval = null;
-let aktivnaKategorija = "";
-
-// Logika za specijalne modove
-let trenutniProfesor = null;
-let isIznenadnaBorbaAktivna = false;
-
-// Inicijalizacija baze podataka
-if (!fs.existsSync(BODOVI_FILE)) {
-    fs.writeJsonSync(BODOVI_FILE, { 
-        korisnici: [], 
-        leaderboard: { dnevni: [], tjedni: [], mjesecni: [], ukupno: [] },
-        kategorije_stats: {} 
-    });
-}
-
-// --- FUNKCIJA ZA BODOVANJE, BEDŽEVE I STREAK ---
-async function azurirajBodove(nadimak, osvojeniBodovi, kategorija) {
-    const baza = await fs.readJson(BODOVI_FILE);
-    let u = baza.korisnici.find(k => k.nadimak === nadimak);
-    
-    if (u) {
-        u.ukupni_bodovi = (u.ukupni_bodovi || 0) + osvojeniBodovi;
-        if (u.ukupni_bodovi < 0) u.ukupni_bodovi = 0;
-
-        // --- NOVO: SUSTAV BEDŽEVA (Milestones) ---
-        if (!u.bedzevi) u.bedzevi = [];
-        const pragovi = [
-            { n: 'Star ⭐', p: 100 },
-            { n: 'Champion 🏆', p: 500 },
-            { n: 'Invincible 🛡️', p: 1000 },
-            { n: 'Cosmic 🌌', p: 5000 }
-        ];
-        pragovi.forEach(prag => {
-            if (u.ukupni_bodovi >= prag.p && !u.bedzevi.includes(prag.n)) {
-                u.bedzevi.push(prag.n);
-            }
-        });
-
-        // --- NOVO: STREAK LOGIKA (Vatra 🔥) ---
-        u.streak = Math.floor(u.ukupni_bodovi / 250); 
-    }
-    
-    await fs.writeJson(BODOVI_FILE, baza, { spaces: 2 });
-    return u;
-}
 
 io.on('connection', (socket) => {
     console.log('Novi korisnik spojen');
 
-    // 1. Prijava i Autentifikacija
+    // 1. Provjera pri prijavi
     socket.on('provjera_prijave', async (podaci) => {
         try {
-            const baza = await fs.readJson(BODOVI_FILE);
-            let korisnik = baza.korisnici.find(u => u.nadimak === podaci.nadimak);
+            const korisnik = await Korisnik.findOne({ nadimak: podaci.nadimak });
             
             if (!korisnik) {
                 socket.emit('odgovor_provjere', { status: 'novi_korisnik' });
@@ -83,100 +57,85 @@ io.on('connection', (socket) => {
                 }
             }
         } catch (err) {
-            console.error("Greška pri prijavi:", err);
+            console.error(err);
+            socket.emit('odgovor_provjere', { status: 'greska', poruka: 'Greška s bazom podataka.' });
         }
     });
 
+    // 2. Finalna registracija ili login
     socket.on('finalna_prijava', async (podaci) => {
-        const baza = await fs.readJson(BODOVI_FILE);
-        let u = baza.korisnici.find(k => k.nadimak === podaci.nadimak);
-        
-        if (!u) {
-            u = { 
-                nadimak: podaci.nadimak, 
-                lozinka: podaci.lozinka, 
-                tajna_sifra: podaci.tajna_sifra,
-                ukupni_bodovi: 0,
-                bedzevi: [],
-                streak: 0,
-                klan: "Nema"
-            };
-            baza.korisnici.push(u);
-            await fs.writeJson(BODOVI_FILE, baza);
-        }
-        
-        socket.nadimak = u.nadimak;
-        socket.klan = u.klan || "Nema";
-        
-        socket.emit('prijavljen_uspjeh', {
-            nadimak: u.nadimak,
-            coinsi: u.ukupni_bodovi,
-            bedzevi: u.bedzevi || [],
-            streak: u.streak || 0,
-            klan: u.klan
-        });
-        
-        io.emit('online_lista_update', Array.from(io.sockets.sockets.values())
-            .filter(s => s.nadimak)
-            .map(s => ({ nadimak: s.nadimak, klan: s.klan })));
-    });
-
-    // 2. Kviz Kontrola
-    socket.on('start_kviz', async (kat) => {
-        aktivnaKategorija = kat;
         try {
-            const pitanja = await fs.readJson(`./pitanja/${kat}.json`);
-            trenutnoPitanje = pitanja[Math.floor(Math.random() * pitanja.length)];
-            odgovorenoPuta = 0;
+            let u = await Korisnik.findOne({ nadimak: podaci.nadimak });
             
-            io.emit('novo_pitanje', { 
-                pitanje: trenutnoPitanje.pitanje, 
-                specijal: isIznenadnaBorbaAktivna ? 'borba' : (trenutniProfesor ? 'profesor' : 'normalno')
+            if (!u) {
+                u = new Korisnik({ 
+                    nadimak: podaci.nadimak, 
+                    lozinka: podaci.lozinka, 
+                    tajna_sifra: podaci.tajna_sifra 
+                });
+                await u.save();
+            }
+            
+            socket.nadimak = u.nadimak;
+            socket.emit('prijavljen_uspjeh', {
+                nadimak: u.nadimak,
+                coinsi: u.ukupni_bodovi,
+                bedzevi: u.bedzevi,
+                streak: u.streak
             });
             
-            pokreniTajmer();
-        } catch (e) {
-            socket.emit('obavijest', "Greška pri učitavanju pitanja.");
+            azurirajOnlineListu();
+        } catch (err) {
+            console.error(err);
         }
+    });
+
+    // 3. Kviz logika (Pitanja ostaju u JSON datotekama na serveru)
+    socket.on('start_kviz', async (kat) => {
+        try {
+            const putanja = path.join(__dirname, 'pitanja', `${kat}.json`);
+            if (fs.existsSync(putanja)) {
+                const pitanja = await fs.readJson(putanja);
+                trenutnoPitanje = pitanja[Math.floor(Math.random() * pitanja.length)];
+                io.emit('novo_pitanje', { pitanje: trenutnoPitanje.pitanje });
+                pokreniTajmer();
+            }
+        } catch (e) { console.log(e); }
     });
 
     socket.on('slanje_odgovora', async (odgovor) => {
         if (!trenutnoPitanje || !socket.nadimak) return;
         
         if (odgovor.toLowerCase().trim() === trenutnoPitanje.odgovor.toLowerCase().trim()) {
-            odgovorenoPuta++;
-            let bodovi = 10;
-            if (odgovorenoPuta === 1) bodovi = 20; // Bonus za najbržeg
-            
-            const updejtovan = await azurirajBodove(socket.nadimak, bodovi, aktivnaKategorija);
+            const u = await Korisnik.findOneAndUpdate(
+                { nadimak: socket.nadimak },
+                { $inc: { ukupni_bodovi: 10 } },
+                { new: true }
+            );
             
             socket.emit('prijavljen_uspjeh', {
-                nadimak: updejtovan.nadimak,
-                coinsi: updejtovan.ukupni_bodovi,
-                bedzevi: updejtovan.bedzevi,
-                streak: updejtovan.streak
+                nadimak: u.nadimak,
+                coinsi: u.ukupni_bodovi,
+                bedzevi: u.bedzevi,
+                streak: u.streak
             });
         }
     });
 
-    // 3. Chat i Privatne Poruke
     socket.on('chat_poruka_slanje', (tekst) => {
         if (socket.nadimak) {
-            io.emit('chat_poruka_prijem', { nadimak: socket.nadimak, tekst: tekst, klan: socket.klan });
+            io.emit('chat_poruka_prijem', { nadimak: socket.nadimak, tekst: tekst });
         }
     });
 
-    socket.on('zahtjev_oporavka', async (data) => {
-        const baza = await fs.readJson(BODOVI_FILE);
-        let k = baza.korisnici.find(u => u.nadimak === data.nadimak && u.tajna_sifra === data.tajna);
-        socket.emit('obavijest', k ? `Lozinka: ${k.lozinka}` : "Pogrešni podaci!");
-    });
+    socket.on('disconnect', () => { azurirajOnlineListu(); });
 
-    socket.on('disconnect', () => {
-        io.emit('online_lista_update', Array.from(io.sockets.sockets.values())
+    function azurirajOnlineListu() {
+        const lista = Array.from(io.sockets.sockets.values())
             .filter(s => s.nadimak)
-            .map(s => ({ nadimak: s.nadimak })));
-    });
+            .map(s => ({ nadimak: s.nadimak }));
+        io.emit('online_lista_update', lista);
+    }
 });
 
 function pokreniTajmer() {
@@ -193,4 +152,4 @@ function pokreniTajmer() {
     }, 1000);
 }
 
-server.listen(PORT, () => console.log(`Arena aktivna na portu ${PORT}`));
+server.listen(PORT, () => console.log(`Arena na MongoDB-u aktivna na portu ${PORT}`));
