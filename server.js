@@ -69,17 +69,21 @@ io.on('connection', (socket) => {
 
     // 1. Prijava i Autentifikacija
     socket.on('provjera_prijave', async (podaci) => {
-        const baza = await fs.readJson(BODOVI_FILE);
-        let korisnik = baza.korisnici.find(u => u.nadimak === podaci.nadimak);
-        
-        if (!korisnik) {
-            socket.emit('odgovor_provjere', { status: 'novi_korisnik' });
-        } else {
-            if (korisnik.lozinka === podaci.lozinka) {
-                socket.emit('odgovor_provjere', { status: 'postojeci' });
+        try {
+            const baza = await fs.readJson(BODOVI_FILE);
+            let korisnik = baza.korisnici.find(u => u.nadimak === podaci.nadimak);
+            
+            if (!korisnik) {
+                socket.emit('odgovor_provjere', { status: 'novi_korisnik' });
             } else {
-                socket.emit('odgovor_provjere', { status: 'greska', poruka: 'Pogrešna lozinka!' });
+                if (korisnik.lozinka === podaci.lozinka) {
+                    socket.emit('odgovor_provjere', { status: 'postojeci' });
+                } else {
+                    socket.emit('odgovor_provjere', { status: 'greska', poruka: 'Pogrešna lozinka!' });
+                }
             }
+        } catch (err) {
+            console.error("Greška pri prijavi:", err);
         }
     });
 
@@ -95,24 +99,26 @@ io.on('connection', (socket) => {
                 ukupni_bodovi: 0,
                 bedzevi: [],
                 streak: 0,
-                klan: podaci.klan || "Nema"
+                klan: "Nema"
             };
             baza.korisnici.push(u);
             await fs.writeJson(BODOVI_FILE, baza);
         }
         
         socket.nadimak = u.nadimak;
-        socket.klan = u.klan;
+        socket.klan = u.klan || "Nema";
         
         socket.emit('prijavljen_uspjeh', {
             nadimak: u.nadimak,
             coinsi: u.ukupni_bodovi,
-            bedzevi: u.bedzevi,
-            streak: u.streak,
+            bedzevi: u.bedzevi || [],
+            streak: u.streak || 0,
             klan: u.klan
         });
         
-        io.emit('online_lista_update', Array.from(io.sockets.sockets.values()).map(s => ({ nadimak: s.nadimak, klan: s.klan })));
+        io.emit('online_lista_update', Array.from(io.sockets.sockets.values())
+            .filter(s => s.nadimak)
+            .map(s => ({ nadimak: s.nadimak, klan: s.klan })));
     });
 
     // 2. Kviz Kontrola
@@ -160,13 +166,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('posalji_privatnu_poruku', (data) => {
-        const primatelj = Array.from(io.sockets.sockets.values()).find(s => s.nadimak === data.kome);
-        if (primatelj) {
-            primatelj.emit('prijem_privatne_poruke', { od: socket.nadimak, tekst: data.tekst });
-        }
-    });
-
     socket.on('zahtjev_oporavka', async (data) => {
         const baza = await fs.readJson(BODOVI_FILE);
         let k = baza.korisnici.find(u => u.nadimak === data.nadimak && u.tajna_sifra === data.tajna);
@@ -174,7 +173,9 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        io.emit('online_lista_update', Array.from(io.sockets.sockets.values()).map(s => ({ nadimak: s.nadimak })));
+        io.emit('online_lista_update', Array.from(io.sockets.sockets.values())
+            .filter(s => s.nadimak)
+            .map(s => ({ nadimak: s.nadimak })));
     });
 });
 
