@@ -13,7 +13,7 @@ const PORT = process.env.PORT || 3000;
 
 // --- POVEZIVANJE NA MONGO DB ---
 // Zamijeni <password> svojom lozinkom u Mongo Atlasu
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://rekvizit:LOZINKA@rekvizit.o6ugw5r.mongodb.net/ArenaDB?retryWrites=true&w=majority';
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://rekvizit:arenakviz@rekvizit.o6ugw5r.mongodb.net/ArenaDB?retryWrites=true&w=majority';
 
 mongoose.connect(MONGO_URI)
     .then(() => console.log('Povezan na MongoDB Cloud 🚀'))
