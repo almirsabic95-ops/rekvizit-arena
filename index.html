@@ -3,230 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rekvizit Arena</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Sretan Rođendan!</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Great+Vibes&display=swap" rel="stylesheet">
     <style>
-        :root { --neon: #00d4ff; --dark: #050505; --gray: #1a1a1a; --red: #ff4444; }
-        body { background: var(--dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; overflow: hidden; }
-        .hidden { display: none !important; }
-        
-        /* GORNJI DESNI KUT */
-        .top-right-ui { position: fixed; top: 15px; right: 300px; display: flex; gap: 10px; z-index: 500; }
-        .btn-logout { background: var(--red); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        :root { --pink: #ff85a2; --dark-pink: #f06292; }
+        body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #fff5f7; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
 
-        /* NAVIGACIJA LIJEVO */
-        #nav-menu { width: 250px; background: #0a0a0a; border-right: 1px solid #333; padding: 20px 10px; display: flex; flex-direction: column; gap: 8px; }
-        .nav-item { padding: 12px; border-radius: 8px; cursor: pointer; transition: 0.3s; color: #ccc; display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 14px; }
-        .nav-item:hover, .nav-item.active { background: var(--neon); color: #000; box-shadow: 0 0 10px var(--neon); }
-        .locked { opacity: 0.4; cursor: not-allowed; position: relative; }
-        .locked::after { content: "NAKON VERZIJE 1.0"; font-size: 7px; position: absolute; right: 5px; top: 2px; background: orange; color: black; padding: 1px 3px; border-radius: 3px; }
+        /* Kontejner za srce */
+        .heart-wrapper { position: relative; width: 300px; height: 260px; cursor: pointer; transition: transform 0.3s; }
+        .heart-wrapper:hover { transform: scale(1.05); }
 
-        /* GLAVNI DIO */
-        main { flex: 1; display: flex; flex-direction: column; padding: 20px; padding-top: 70px; }
-        #kviz-ekran { background: var(--gray); border-radius: 15px; border: 2px solid #333; padding: 30px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,0.8); }
-        #kviz-tajmer { font-size: 65px; font-weight: bold; color: #28a745; margin: 10px 0; font-family: 'Courier New', monospace; }
-        
-        /* CHAT */
-        #chat-glavni { flex: 1; background: #0c0c0c; border: 1px solid #333; border-radius: 10px; margin-top: 20px; display: flex; flex-direction: column; overflow: hidden; }
-        #chat-messages { flex: 1; overflow-y: auto; padding: 15px; font-size: 14px; }
-        .system-msg { color: #ffd700; font-weight: bold; padding: 4px 0; border-bottom: 1px solid #222; }
+        /* Ruže (Okvir) */
+        .rose-border { position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; border: 15px double var(--pink); border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%; z-index: 1; pointer-events: none; }
 
-        /* SIDEBOARD DESNO */
-        #sideboard { width: 280px; background: #0a0a0a; border-left: 1px solid #333; padding: 20px 10px; }
-        .side-header { color: var(--neon); font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px; font-size: 14px; }
-        .p-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 5px; cursor: pointer; transition: 0.2s; }
-        .p-row:hover { background: #1a1a1a; }
-        .p-avatar { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--neon); }
+        /* Glavno srce podijeljeno na dvoja vrata */
+        .heart-door { position: absolute; width: 50%; height: 100%; background: var(--pink); z-index: 3; transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .left-door { left: 0; border-radius: 150px 150px 0 150px; transform-origin: left; border-right: 1px solid rgba(255,255,255,0.3); }
+        .right-door { right: 0; border-radius: 150px 150px 150px 0; transform-origin: right; }
 
-        /* LOGIN & MODALI */
-        #login-screen { position: fixed; inset: 0; background: var(--dark); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-        .box { background: var(--gray); padding: 35px; border-radius: 20px; border: 2px solid var(--neon); width: 330px; text-align: center; }
-        input, select { background: #111; border: 1px solid #444; color: white; padding: 12px; border-radius: 6px; width: 90%; margin-bottom: 12px; outline: none; }
-        .btn-main { background: var(--neon); color: black; border: none; padding: 12px; border-radius: 6px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-        
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.96); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+        .open .left-door { transform: rotateY(-140deg); }
+        .open .right-door { transform: rotateY(140deg); }
+
+        /* Unutrašnjost srca (Tekst) */
+        .content { position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; z-index: 2; background: white; border-radius: 150px 150px 150px 150px / 120px 120px 180px 180px; }
+        .text { font-family: 'Dancing Script', cursive; font-size: 1.2rem; color: #444; opacity: 0; transform: translateY(20px); transition: all 1s ease; }
+        .open .text { opacity: 1; transform: translateY(0); transition-delay: 1.5s; }
+
+        /* Modal (Prozor za datum) */
+        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10; display: none; justify-content: center; align-items: center; }
+        .modal-box { background: white; padding: 30px; border-radius: 20px; text-align: center; width: 80%; max-width: 400px; border: 4px solid var(--pink); }
+        input[type="date"] { padding: 10px; margin: 20px 0; border: 2px solid var(--pink); border-radius: 10px; width: 90%; font-size: 1rem; }
+        button { background: var(--pink); color: white; border: none; padding: 10px 25px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+
+        /* Ključ animacija */
+        #key { position: absolute; font-size: 50px; display: none; z-index: 5; transition: all 1s ease; }
     </style>
 </head>
 <body>
 
-    <audio id="snd-first" src="https://www.myinstants.com/media/sounds/firstblood.mp3"></audio>
-    <audio id="snd-hit" src="https://www.myinstants.com/media/sounds/kill-7.mp3"></audio>
-    <audio id="snd-triple" src="https://www.myinstants.com/media/sounds/triplekill.mp3"></audio>
-
-    <div id="login-screen">
-        <div class="box">
-            <h1 style="color:var(--neon); margin-bottom:25px; letter-spacing:3px;">ARENA</h1>
-            <input type="text" id="ln" placeholder="Nadimak">
-            <input type="password" id="lp" placeholder="Lozinka">
-            <button class="btn-main" onclick="prijaviSe()">PRIDRUŽI SE</button>
-            <p onclick="otvoriOporavak()" style="font-size:11px; color:#666; cursor:pointer; margin-top:15px;">Zaboravljena lozinka?</p>
+    <div class="heart-wrapper" id="heartBox" onclick="showModal()">
+        <div class="rose-border"></div>
+        <div class="heart-door left-door"></div>
+        <div class="heart-door right-door"></div>
+        <div class="content">
+            <p class="text">
+                Sretan rođendan ženi koja moj život čini potpunim.<br><br>
+                Svaki dan s tobom je nova stranica najljepše priče.<br><br>
+                Hvala ti što si moj oslonac, moja radost i moja najveća ljubav.<br>
+                <strong>Volim te zauvijek!</strong>
+            </p>
         </div>
     </div>
 
-    <div id="mod-op" class="modal-overlay hidden">
-        <div class="box">
-            <h3 style="color:var(--neon)">Oporavak Računa</h3>
-            <input type="text" id="on" placeholder="Nadimak">
-            <input type="password" id="ot" placeholder="Tajna šifra">
-            <input type="email" id="oe" placeholder="Vaš Email">
-            <select id="or" onchange="provjeriRazlog(this.value)">
-                <option value="">Razlog zahtjeva...</option>
-                <option value="promjena lozinke">Promjena lozinke</option>
-                <option value="hakiran">Hakiran račun</option>
-            </select>
-            <div id="div-nova" class="hidden">
-                <input type="password" id="onl" placeholder="Nova lozinka">
-            </div>
-            <button class="btn-main" onclick="posaljiZahtjev()">POŠALJI</button>
-            <button onclick="zatvoriModal('mod-op')" style="background:none; border:none; color:white; margin-top:10px; cursor:pointer">Odustani</button>
+    <div id="key">🔑</div>
+
+    <div id="modal">
+        <div class="modal-box">
+            <h3>Upiši svoj datum rođenja ❤️</h3>
+            <input type="date" id="birthDate">
+            <br>
+            <button onclick="sendDate()">POŠALJI</button>
         </div>
     </div>
 
-    <div id="mod-msg" class="modal-overlay hidden">
-        <div class="box">
-            <i class="fas fa-info-circle" style="font-size:30px; color:var(--neon)"></i>
-            <p id="msg-txt" style="margin:20px 0;">U toku je provjera podataka, administrator će vas obavjestiti na email.</p>
-            <button class="btn-main" onclick="zatvoriModal('mod-msg')">U REDU</button>
-        </div>
-    </div>
-
-    <div class="top-right-ui hidden" id="top-ui">
-        <button class="btn-logout" onclick="location.reload()">ODJAVA</button>
-    </div>
-
-    <nav id="nav-menu" class="hidden">
-        <div class="nav-item active"><i class="fas fa-bolt"></i> Rekvizit Arena</div>
-        <div class="nav-item locked"><i class="fas fa-graduation-cap"></i> Učilica</div>
-        <div class="nav-item"><i class="fas fa-sword"></i> 1vs1 Dvoboj</div>
-        <div class="nav-item locked"><i class="fas fa-users"></i> Klan vs Klan</div>
-        <div class="nav-item"><i class="fas fa-chart-bar"></i> Tablica</div>
-        <div class="nav-item"><i class="fas fa-store"></i> Trgovina</div>
-        <div class="nav-item"><i class="fas fa-medal"></i> Rekordi</div>
-        <div class="nav-item"><i class="fas fa-shield-alt"></i> Pravila</div>
-    </nav>
-
-    <main class="hidden" id="main-area">
-        <div id="kviz-ekran">
-            <div id="kviz-meta" style="font-size:12px; color:var(--neon); text-transform:uppercase;">Kategorija: --- | Težina: ---</div>
-            <div id="pitanje-tekst" style="font-size:24px; margin:20px 0; min-height:60px;">Učitavanje arene...</div>
-            <div id="kviz-tajmer">30</div>
-            <input type="text" id="odgovor" placeholder="Upiši odgovor..." style="width:70%; text-align:center; font-size:18px;" autocomplete="off">
-        </div>
-
-        <div id="chat-glavni">
-            <div id="chat-messages"></div>
-            <div style="display:flex; padding:10px; background:#111;">
-                <input type="text" id="chat-in" placeholder="Napiši nešto javno..." style="flex:1; margin:0">
-                <button onclick="send()" style="background:var(--neon); border:none; padding:10px; margin-left:5px; border-radius:5px;">➔</button>
-            </div>
-        </div>
-    </main>
-
-    <aside id="sideboard" class="hidden">
-        <div class="side-header">🏆 TOP 10 ONLINE</div>
-        <div id="top-list"></div>
-        <div class="side-header" style="margin-top:20px;">🟢 ONLINE IGRAČI</div>
-        <div id="svi-list"></div>
-    </aside>
-
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <script>
-        const socket = io();
-        let me = {};
-
-        function prijaviSe() {
-            const n = document.getElementById('ln').value;
-            const p = document.getElementById('lp').value;
-            if(n && p) {
-                me = { nadimak: n, lozinka: p };
-                socket.emit('provjera_prijave', me);
+        function showModal() {
+            if (!document.getElementById('heartBox').classList.contains('open')) {
+                document.getElementById('modal').style.display = 'flex';
             }
         }
 
-        socket.on('odgovor_provjere', (res) => {
-            if(res.status === 'novi_korisnik') {
-                const ts = prompt("Ovo je tvoja prva prijava! Postavi TAJNU ŠIFRU za oporavak:");
-                if(ts) { me.tajna_sifra = ts; socket.emit('finalna_prijava', me); }
-            } else if(res.status === 'postojeci') {
-                socket.emit('finalna_prijava', me);
-            } else alert(res.poruka);
-        });
+        async function sendDate() {
+            const datum = document.getElementById('birthDate').value;
+            const res = await fetch('/provjeri-datum', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ datum })
+            });
+            const data = await res.json();
 
-        socket.on('prijavljen_uspjeh', (u) => {
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('top-ui').classList.remove('hidden');
-            document.querySelectorAll('#nav-menu, #main-area, #sideboard').forEach(el => el.classList.remove('hidden'));
-        });
-
-        // KVIZ LOGIKA
-        const odgInp = document.getElementById('odgovor');
-        odgInp.addEventListener('keydown', (e) => {
-            if(e.key === 'Enter') { socket.emit('slanje_odgovora', odgInp.value); odgInp.value = ''; }
-        });
-
-        socket.on('novo_pitanje', (data) => {
-            document.getElementById('pitanje-tekst').innerText = data.pitanje;
-            document.getElementById('kviz-meta').innerText = `Kategorija: ${data.kategorija} | Težina: ${data.tezina}`;
-            odgInp.disabled = false;
-            odgInp.focus();
-        });
-
-        socket.on('vrijeme_update', (s) => { 
-            const t = document.getElementById('kviz-tajmer');
-            t.innerText = s;
-            t.style.color = s <= 10 ? 'red' : '#28a745';
-        });
-
-        socket.on('igrac_pogodio', (data) => {
-            const box = document.getElementById('chat-messages');
-            box.innerHTML += `<div class="system-msg">🎯 ${data.nadimak} je pogodio! Redoslijed: ${data.poredak.join(', ')}</div>`;
-            box.scrollTop = box.scrollHeight;
-            
-            // Zvukovi
-            if(data.first) document.getElementById('snd-first').play();
-            else document.getElementById('snd-hit').play();
-        });
-
-        // OPORAVAK
-        function otvoriOporavak() { document.getElementById('mod-op').classList.remove('hidden'); }
-        function zatvoriModal(id) { document.getElementById(id).classList.add('hidden'); }
-        function provjeriRazlog(v) { document.getElementById('div-nova').style.display = (v === 'promjena lozinke' ? 'block' : 'none'); }
-        
-        function posaljiZahtjev() {
-            const p = {
-                nadimak: document.getElementById('on').value,
-                tajna: document.getElementById('ot').value,
-                email: document.getElementById('oe').value,
-                razlog: document.getElementById('or').value,
-                novaLozinka: document.getElementById('onl').value
-            };
-            socket.emit('zahtjev_oporavka_full', p);
-            zatvoriModal('mod-op');
-            document.getElementById('mod-msg').classList.remove('hidden');
+            if (data.success) {
+                document.getElementById('modal').style.display = 'none';
+                startUnlockSequence();
+            } else {
+                alert(data.message);
+            }
         }
 
-        // CHAT
-        function send() {
-            const i = document.getElementById('chat-in');
-            if(i.value) { socket.emit('chat_poruka_slanje', i.value); i.value = ''; }
-        }
-        socket.on('chat_poruka_prijem', (d) => {
-            const b = document.getElementById('chat-messages');
-            b.innerHTML += `<div><b style="color:var(--neon)">${d.nadimak}:</b> ${d.tekst}</div>`;
-            b.scrollTop = b.scrollHeight;
-        });
+        function startUnlockSequence() {
+            const key = document.getElementById('key');
+            key.style.display = 'block';
+            key.style.top = '50%';
+            key.style.left = '50%';
+            key.style.transform = 'translate(-50%, -50%) rotate(45deg)';
 
-        socket.on('online_lista_update', (data) => {
-            document.getElementById('top-list').innerHTML = data.top.map(p => `
-                <div class="p-row">
-                    <img src="${p.avatar}" class="p-avatar">
-                    <span>${p.nadimak}</span> <span style="margin-left:auto; color:var(--neon)">${p.bodovi}</span>
-                </div>
-            `).join('');
-            document.getElementById('svi-list').innerHTML = data.svi.map(p => `
-                <div class="p-row"><div style="width:8px; height:8px; background:green; border-radius:50%"></div> ${p.nadimak}</div>
-            `).join('');
-        });
+            setTimeout(() => {
+                key.style.transform = 'translate(-50%, -50%) rotate(90deg) scale(1.5)';
+                setTimeout(() => {
+                    key.style.opacity = '0';
+                    document.getElementById('heartBox').classList.add('open');
+                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+                }, 1000);
+            }, 1000);
+        }
     </script>
 </body>
 </html>
