@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sretan Rođendan!</title>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Great+Vibes&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Great+Vibes&family=Poppins:wght@300;500&display=swap" rel="stylesheet">
     <style>
-        :root { --pink: #ff85a2; --dark-pink: #f06292; }
-        body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #fff5f7; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        :root { --pink: #ff85a2; --dark-pink: #f06292; --soft-white: #fff5f7; }
+        body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: var(--soft-white); font-family: 'Poppins', sans-serif; overflow: hidden; }
 
         /* Kontejner za srce */
-        .heart-wrapper { position: relative; width: 300px; height: 260px; cursor: pointer; transition: transform 0.3s; }
+        .heart-wrapper { position: relative; width: 300px; height: 260px; cursor: pointer; transition: transform 0.3s; z-index: 5; }
         .heart-wrapper:hover { transform: scale(1.05); }
 
         /* Ruže (Okvir) */
         .rose-border { position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; border: 15px double var(--pink); border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%; z-index: 1; pointer-events: none; }
 
         /* Glavno srce podijeljeno na dvoja vrata */
-        .heart-door { position: absolute; width: 50%; height: 100%; background: var(--pink); z-index: 3; transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .heart-door { position: absolute; width: 50%; height: 100%; background: var(--pink); z-index: 3; transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .left-door { left: 0; border-radius: 150px 150px 0 150px; transform-origin: left; border-right: 1px solid rgba(255,255,255,0.3); }
         .right-door { right: 0; border-radius: 150px 150px 150px 0; transform-origin: right; }
 
@@ -25,23 +25,68 @@
         .open .right-door { transform: rotateY(140deg); }
 
         /* Unutrašnjost srca (Tekst) */
-        .content { position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 20px; box-sizing: border-box; z-index: 2; background: white; border-radius: 150px 150px 150px 150px / 120px 120px 180px 180px; }
-        .text { font-family: 'Dancing Script', cursive; font-size: 1.2rem; color: #444; opacity: 0; transform: translateY(20px); transition: all 1s ease; }
+        .content { position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 25px; box-sizing: border-box; z-index: 2; background: white; border-radius: 150px 150px 150px 150px / 120px 120px 180px 180px; }
+        .text { font-family: 'Dancing Script', cursive; font-size: 1.2rem; color: #444; opacity: 0; transform: translateY(20px); transition: all 1s ease; line-height: 1.4; }
         .open .text { opacity: 1; transform: translateY(0); transition-delay: 1.5s; }
 
-        /* Modal (Prozor za datum) */
-        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10; display: none; justify-content: center; align-items: center; }
-        .modal-box { background: white; padding: 30px; border-radius: 20px; text-align: center; width: 80%; max-width: 400px; border: 4px solid var(--pink); }
-        input[type="date"] { padding: 10px; margin: 20px 0; border: 2px solid var(--pink); border-radius: 10px; width: 90%; font-size: 1rem; }
-        button { background: var(--pink); color: white; border: none; padding: 10px 25px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        /* NOVI ROMANTIČNI MODAL */
+        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 133, 162, 0.2); backdrop-filter: blur(8px); z-index: 100; display: flex; justify-content: center; align-items: center; transition: opacity 0.5s ease; }
+        .modal-box { 
+            background: white; 
+            padding: 40px; 
+            border-radius: 30px; 
+            text-align: center; 
+            width: 85%; 
+            max-width: 400px; 
+            border: none;
+            box-shadow: 0 20px 40px rgba(240, 98, 146, 0.2);
+            position: relative;
+            animation: fadeInModal 0.8s ease-out;
+        }
+        @keyframes fadeInModal { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        
+        .modal-box h3 { font-family: 'Great Vibes', cursive; font-size: 2.2rem; color: var(--dark-pink); margin-bottom: 15px; }
+        .modal-box p { font-size: 0.9rem; color: #777; margin-bottom: 20px; }
 
-        /* Ključ animacija */
-        #key { position: absolute; font-size: 50px; display: none; z-index: 5; transition: all 1s ease; }
+        input[type="date"] { 
+            padding: 12px; 
+            margin: 10px 0; 
+            border: 2px solid #ffe0e9; 
+            border-radius: 15px; 
+            width: 100%; 
+            font-size: 1rem; 
+            outline: none; 
+            color: #555;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+        input[type="date"]:focus { border-color: var(--pink); }
+
+        button { 
+            background: linear-gradient(45deg, var(--pink), var(--dark-pink)); 
+            color: white; 
+            border: none; 
+            padding: 12px 35px; 
+            border-radius: 25px; 
+            cursor: pointer; 
+            font-weight: 500; 
+            letter-spacing: 1px;
+            box-shadow: 0 5px 15px rgba(240, 98, 146, 0.3);
+            transition: all 0.3s;
+            margin-top: 15px;
+        }
+        button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(240, 98, 146, 0.4); }
+
+        #key { position: absolute; font-size: 50px; display: none; z-index: 10; transition: all 1s ease; }
     </style>
 </head>
 <body>
 
-    <div class="heart-wrapper" id="heartBox" onclick="showModal()">
+    <audio id="bgMusic" loop>
+        <source src="pjesma.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="heart-wrapper" id="heartBox">
         <div class="rose-border"></div>
         <div class="heart-door left-door"></div>
         <div class="heart-door right-door"></div>
@@ -59,23 +104,31 @@
 
     <div id="modal">
         <div class="modal-box">
-            <h3>Upiši svoj datum rođenja ❤️</h3>
+            <h3>Dobrodošla, ljubavi... ❤️</h3>
+            <p>Samo jedna osoba može otvoriti ovo srce. <br> Molim te, potvrdi svoj datum rođenja:</p>
             <input type="date" id="birthDate">
             <br>
-            <button onclick="sendDate()">POŠALJI</button>
+            <button onclick="sendDate()">OTKLJUČAJ SRCE</button>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <script>
-        function showModal() {
-            if (!document.getElementById('heartBox').classList.contains('open')) {
-                document.getElementById('modal').style.display = 'flex';
+        // Pokušaj pokretanja muzike na prvi klik bilo gdje (jer preglednici blokiraju autoplay)
+        document.body.addEventListener('click', function() {
+            const music = document.getElementById('bgMusic');
+            if (music.paused) {
+                music.play();
             }
-        }
+        }, { once: true });
 
         async function sendDate() {
             const datum = document.getElementById('birthDate').value;
+            if (!datum) {
+                alert("Molim te, odaberi datum.");
+                return;
+            }
+
             const res = await fetch('/provjeri-datum', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -84,8 +137,11 @@
             const data = await res.json();
 
             if (data.success) {
-                document.getElementById('modal').style.display = 'none';
-                startUnlockSequence();
+                document.getElementById('modal').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('modal').style.display = 'none';
+                    startUnlockSequence();
+                }, 500);
             } else {
                 alert(data.message);
             }
