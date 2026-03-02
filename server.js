@@ -12,12 +12,12 @@ app.get('/', (req, res) => {
 app.post('/provjeri-datum', (req, res) => {
     const { datum } = req.body;
     // Ovdje upiši njen pravi datum rođenja u formatu GGGG-MM-DD
-    const praviDatum = "1996-03-05"; // PROMIJENI OVO NA NJEN DATUM
+    const praviDatum = "1973-03-02"; // PROMIJENI OVO NA NJEN DATUM
 
     if (datum === praviDatum) {
         res.json({ success: true });
     } else {
-        res.json({ success: false, message: "Pokušaj ponovno, ljubavi..." });
+        res.json({ success: false, message: "Pokušaj ponovno, majko" });
     }
 });
 
