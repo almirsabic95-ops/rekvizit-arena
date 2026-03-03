@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sretan Rođendan!</title>
+    <title>Sretan Rođendan, Amina! ❤️</title>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Great+Vibes&family=Poppins:wght@300;500&display=swap" rel="stylesheet">
     <style>
         :root { --pink: #ff85a2; --dark-pink: #f06292; --soft-white: #fff5f7; }
@@ -26,11 +26,11 @@
 
         /* Unutrašnjost srca (Tekst) */
         .content { position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 25px; box-sizing: border-box; z-index: 2; background: white; border-radius: 150px 150px 150px 150px / 120px 120px 180px 180px; }
-        .text { font-family: 'Dancing Script', cursive; font-size: 1.2rem; color: #444; opacity: 0; transform: translateY(20px); transition: all 1s ease; line-height: 1.4; }
+        .text { font-family: 'Dancing Script', cursive; font-size: 1.1rem; color: #444; opacity: 0; transform: translateY(20px); transition: all 1s ease; line-height: 1.4; }
         .open .text { opacity: 1; transform: translateY(0); transition-delay: 1.5s; }
 
-        /* NOVI ROMANTIČNI MODAL */
-        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 133, 162, 0.2); backdrop-filter: blur(8px); z-index: 100; display: flex; justify-content: center; align-items: center; transition: opacity 0.5s ease; }
+        /* MODAL */
+        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 133, 162, 0.4); backdrop-filter: blur(8px); z-index: 100; display: flex; justify-content: center; align-items: center; transition: opacity 0.5s ease; }
         .modal-box { 
             background: white; 
             padding: 40px; 
@@ -38,9 +38,7 @@
             text-align: center; 
             width: 85%; 
             max-width: 400px; 
-            border: none;
             box-shadow: 0 20px 40px rgba(240, 98, 146, 0.2);
-            position: relative;
             animation: fadeInModal 0.8s ease-out;
         }
         @keyframes fadeInModal { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
@@ -48,33 +46,10 @@
         .modal-box h3 { font-family: 'Great Vibes', cursive; font-size: 2.2rem; color: var(--dark-pink); margin-bottom: 15px; }
         .modal-box p { font-size: 0.9rem; color: #777; margin-bottom: 20px; }
 
-        input[type="date"] { 
-            padding: 12px; 
-            margin: 10px 0; 
-            border: 2px solid #ffe0e9; 
-            border-radius: 15px; 
-            width: 100%; 
-            font-size: 1rem; 
-            outline: none; 
-            color: #555;
-            transition: border-color 0.3s;
-            box-sizing: border-box;
-        }
+        input[type="date"] { padding: 12px; margin: 10px 0; border: 2px solid #ffe0e9; border-radius: 15px; width: 100%; font-size: 1rem; box-sizing: border-box; outline: none; color: #555; }
         input[type="date"]:focus { border-color: var(--pink); }
 
-        button { 
-            background: linear-gradient(45deg, var(--pink), var(--dark-pink)); 
-            color: white; 
-            border: none; 
-            padding: 12px 35px; 
-            border-radius: 25px; 
-            cursor: pointer; 
-            font-weight: 500; 
-            letter-spacing: 1px;
-            box-shadow: 0 5px 15px rgba(240, 98, 146, 0.3);
-            transition: all 0.3s;
-            margin-top: 15px;
-        }
+        button { background: linear-gradient(45deg, var(--pink), var(--dark-pink)); color: white; border: none; padding: 12px 35px; border-radius: 25px; cursor: pointer; font-weight: 500; letter-spacing: 1px; transition: all 0.3s; margin-top: 15px; }
         button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(240, 98, 146, 0.4); }
 
         #key { position: absolute; font-size: 50px; display: none; z-index: 10; transition: all 1s ease; }
@@ -82,7 +57,10 @@
 </head>
 <body>
 
-    <audio id="bgMusic" loop>
+    <audio id="audioIntro">
+        <source src="pjesma0.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="audioMain" loop>
         <source src="pjesma.mp3" type="audio/mpeg">
     </audio>
 
@@ -109,21 +87,26 @@
             <p>Samo jedna osoba može otvoriti ovo srce. <br> Molim te, potvrdi svoj datum rođenja:</p>
             <input type="date" id="birthDate">
             <br>
-            <button onclick="sendDate()">OTKLJUČAJ SRCE</button>
+            <button onclick="checkDate()">OTKLJUČAJ SRCE</button>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <script>
-        // Pokušaj pokretanja muzike na prvi klik bilo gdje (jer preglednici blokiraju autoplay)
-        document.body.addEventListener('click', function() {
-            const music = document.getElementById('bgMusic');
-            if (music.paused) {
-                music.play();
+        const audioIntro = document.getElementById('audioIntro');
+        const audioMain = document.getElementById('audioMain');
+        const modal = document.getElementById('modal');
+        const heartBox = document.getElementById('heartBox');
+        let isVerified = false;
+
+        // Aktivacija prve pjesme na bilo koji dodir na stranici (zaobilaženje restrikcija)
+        document.addEventListener('click', () => {
+            if (audioIntro.paused && !isVerified) {
+                audioIntro.play().catch(e => console.log("Audio play blocked"));
             }
         }, { once: true });
 
-        async function sendDate() {
+        async function checkDate() {
             const datum = document.getElementById('birthDate').value;
             if (!datum) {
                 alert("Molim te, odaberi datum.");
@@ -138,17 +121,25 @@
             const data = await res.json();
 
             if (data.success) {
-                document.getElementById('modal').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('modal').style.display = 'none';
-                    startUnlockSequence();
-                }, 500);
+                isVerified = true;
+                modal.style.opacity = '0';
+                setTimeout(() => { modal.style.display = 'none'; }, 500);
+
+                // Čekanje da pjesma0 završi prije otvaranja
+                if (!audioIntro.ended && !audioIntro.paused) {
+                    audioIntro.onended = () => startCelebration();
+                } else {
+                    startCelebration();
+                }
             } else {
                 alert(data.message);
             }
         }
 
-        function startUnlockSequence() {
+        function startCelebration() {
+            // Pokretanje glavne rođendanske pjesme
+            audioMain.play();
+
             const key = document.getElementById('key');
             key.style.display = 'block';
             key.style.top = '50%';
@@ -159,8 +150,13 @@
                 key.style.transform = 'translate(-50%, -50%) rotate(90deg) scale(1.5)';
                 setTimeout(() => {
                     key.style.opacity = '0';
-                    document.getElementById('heartBox').classList.add('open');
-                    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+                    heartBox.classList.add('open');
+                    confetti({ 
+                        particleCount: 150, 
+                        spread: 70, 
+                        origin: { y: 0.6 },
+                        colors: ['#ff85a2', '#f06292', '#ffffff']
+                    });
                 }, 1000);
             }, 1000);
         }
