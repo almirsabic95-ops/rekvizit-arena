@@ -11,25 +11,26 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// MONGODB ATLAS VEZA
+// MONGO DB ATLAS KONEKCIJA
 const dbURI = "mongodb+srv://rekvizit:arenakviz@rekvizit.o6ugw5r.mongodb.net/RekvizitArena?retryWrites=true&w=majority&appName=Rekvizit";
-mongoose.connect(dbURI).then(() => console.log('✅ Arena povezana na Cloud')).catch(err => console.log(err));
 
-// MODEL KORISNIKA [cite: 2026-02-19]
+mongoose.connect(dbURI)
+    .then(() => console.log('✅ Arena povezana na MongoDB Atlas'))
+    .catch(err => console.log('❌ Greška baze:', err));
+
+// MODEL KORISNIKA
 const UserSchema = new mongoose.Schema({
-    username: { type: String, unique: true },
-    password: { type: String },
-    secretKey: { type: String },
-    couponUsed: { type: String, default: "" },
+    username: { type: String, unique: true, required: true },
+    password: { type: String, required: true },
+    secretKey: { type: String, required: true },
     coins: { type: Number, default: 0 },
-    lastLogin: { type: Date, default: Date.now },
     loginStreak: { type: Number, default: 1 },
-    region: { type: String, default: "Nepoznato" },
-    stats: { type: Object, default: {} } // Dinamička statistika
+    lastLogin: { type: Date, default: Date.now },
+    stats: { type: Object, default: {} } // Dinamička statistika (npr. { vjesala: { wins: 5 } })
 });
 const User = mongoose.model('User', UserSchema);
 
-// SOCKET LOGIKA: Online lista i statusi
+// ONLINE KORISNICI
 let onlineUsers = {};
 
 io.on('connection', (socket) => {
@@ -46,51 +47,64 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('send-msg', (text) => {
+        if (socket.username) {
+            io.emit('receive-msg', { user: socket.username, text });
+        }
+    });
+
     socket.on('disconnect', () => {
         if (socket.username) {
             delete onlineUsers[socket.username];
             io.emit('update-online-list', onlineUsers);
         }
     });
-
-    // Chat Lobby
-    socket.on('send-msg', (data) => {
-        io.emit('receive-msg', { user: socket.username, text: data });
-    });
 });
 
-// API ZA LOGIN I KUPON
+// API: LOGIN / REGISTRACIJA
 app.post('/api/login', async (req, res) => {
     const { username, password, secretKey, coupon } = req.body;
-    let user = await User.findOne({ username });
+    try {
+        let user = await User.findOne({ username });
 
-    if (!user) {
-        if (!secretKey) return res.status(400).json({ firstLogin: true });
-        
-        // Registracija s kuponom
-        let initialCoins = 0;
-        if (coupon && coupon.length > 2) initialCoins = 50; // Nagrada za kupon
+        // REGISTRACIJA (Prva prijava)
+        if (!user) {
+            if (!secretKey) return res.status(400).json({ firstLogin: true });
+            
+            let initialGold = 0;
+            if (coupon && coupon.trim().length > 0) initialGold = 50; // Bonus za kupon
 
-        user = new User({ username, password, secretKey, couponUsed: coupon, coins: initialCoins });
-        await user.save();
-        return res.json({ success: true, message: "Dobrodošli u Arenu!" });
-    }
-
-    if (user.password === password) {
-        // Logika za 7-dnevni bonus
-        const today = new Date().toDateString();
-        const last = new Date(user.lastLogin).toDateString();
-        
-        if (today !== last) {
-            // Ovdje ide provjera za streak i dodjela coinsa
-            user.lastLogin = Date.now();
+            user = new User({ username, password, secretKey, coins: initialGold });
             await user.save();
+            return res.json({ success: true, coins: user.coins, streak: user.loginStreak, stats: user.stats });
         }
-        res.json({ success: true, stats: user.stats, coins: user.coins });
-    } else {
-        res.status(401).json({ success: false, message: "Pogrešna lozinka" });
+
+        // LOGIN
+        if (user.password === password) {
+            const danas = new Date().toDateString();
+            const zadnji = new Date(user.lastLogin).toDateString();
+
+            if (danas !== zadnji) {
+                user.loginStreak = (new Date() - new Date(user.lastLogin) < 86400000 * 2) ? user.loginStreak + 1 : 1;
+                if (user.loginStreak > 7) user.loginStreak = 1; // Reset nakon 7 dana
+                user.coins += (user.loginStreak * 10); // Veća nagrada svaki dan
+                user.lastLogin = Date.now();
+                await user.save();
+            }
+            res.json({ success: true, coins: user.coins, streak: user.loginStreak, stats: user.stats });
+        } else {
+            res.status(401).json({ success: false, message: "Netočna lozinka!" });
+        }
+    } catch (err) {
+        res.status(500).json({ success: false });
     }
+});
+
+// API: DOHVATI TUĐI PROFIL
+app.get('/api/user-stats/:username', async (req, res) => {
+    const user = await User.findOne({ username: req.params.username }, 'username coins stats loginStreak');
+    user ? res.json(user) : res.status(404).send();
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => console.log(`🚀 Server na portu ${PORT}`));
+server.listen(PORT, () => console.log(`🚀 Arena aktivna na portu ${PORT}`));

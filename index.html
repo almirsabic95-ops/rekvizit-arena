@@ -5,82 +5,97 @@
     <title>Rekvizit Arena</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { font-family: sans-serif; background: #121212; color: white; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; margin: 0; overflow: hidden; }
         .hidden { display: none !important; }
-        .main-container { display: flex; width: 95%; height: 90vh; gap: 15px; }
         
-        /* Sekcije */
-        .side-panel { width: 200px; background: #1e1e1e; padding: 15px; border-radius: 10px; border: 1px solid #333; }
-        .center-panel { flex: 2; background: #1e1e1e; padding: 20px; border-radius: 10px; display: flex; flex-direction: column; }
-        
-        /* Online statusi */
-        .user-item { margin: 5px 0; font-size: 0.9rem; }
-        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        /* R-ZLATO STIL */
+        .r-coin { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; background: gold; color: black; border-radius: 50%; font-weight: bold; font-size: 12px; border: 2px solid #b8860b; margin: 0 5px; box-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
+
+        /* HODAJUĆI BANNER */
+        .banner { background: #f39c12; color: black; padding: 6px 0; font-weight: bold; position: absolute; top: 0; width: 100%; z-index: 10; overflow: hidden; white-space: nowrap; }
+        .banner span { display: inline-block; animation: marquee 20s linear infinite; }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+
+        /* LAYOUT */
+        .main-container { display: flex; padding: 50px 20px 20px; gap: 15px; height: 85vh; }
+        .panel { background: #1e1e1e; border-radius: 10px; border: 1px solid #333; padding: 15px; }
+        .side { width: 220px; }
+        .center { flex: 2; display: flex; flex-direction: column; }
+
+        /* ONLINE LISTA */
+        .user-item { padding: 10px; border-bottom: 1px solid #333; cursor: pointer; display: flex; align-items: center; transition: 0.2s; }
+        .user-item:hover { background: #2c2c2c; color: #f39c12; }
+        .dot { height: 10px; width: 10px; border-radius: 50%; margin-right: 10px; }
         .online { background: #27ae60; }
         .away { background: #f1c40f; }
 
-        /* Kviz gumbi */
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
-        button { padding: 12px; cursor: pointer; border-radius: 5px; border: none; font-weight: bold; }
-        .btn-active { background: #27ae60; color: white; }
-        .btn-locked { background: #444; color: #888; cursor: not-allowed; }
+        /* MODAL */
+        #profile-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #252525; padding: 25px; border-radius: 15px; border: 2px solid #f39c12; z-index: 100; min-width: 300px; text-align: center; box-shadow: 0 0 100px rgba(0,0,0,0.9); }
 
-        /* Chat */
-        #chat-box { flex: 1; overflow-y: auto; background: #111; padding: 10px; margin: 10px 0; border-radius: 5px; }
-        
-        /* Radio prostor */
-        #radio-space { margin-top: 20px; border: 1px dashed #555; padding: 10px; text-align: center; }
+        /* INPUTI I GUMBI */
+        input { width: 100%; padding: 10px; margin: 5px 0; background: #333; border: 1px solid #444; color: white; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; cursor: pointer; border-radius: 5px; border: none; font-weight: bold; transition: 0.3s; }
+        .btn-gold { background: #f39c12; color: black; }
+        .btn-locked { background: #444; color: #888; cursor: not-allowed; margin-top: 5px; }
+        .btn-red { background: #c0392b; color: white; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-<div id="login-screen" class="arena-box" style="width: 350px; background: #1e1e1e; padding: 30px; border-radius: 10px; text-align:center;">
+<div class="banner">
+    <span>⚠️ Arena je u fazi izgradnje! Uskoro otvaramo TRGOVINU - skupljajte <div class="r-coin">R</div> zlato za ekskluzivne nagrade! ⚠️</span>
+</div>
+
+<div id="login-screen" style="width: 350px; margin: 120px auto; background: #1e1e1e; padding: 30px; border-radius: 10px; text-align: center; border: 1px solid #333;">
     <h2>Rekvizit Arena</h2>
-    <input type="text" id="user" placeholder="Nadimak" style="width:100%; margin: 10px 0; padding: 10px;">
-    <input type="password" id="pass" placeholder="Lozinka" style="width:100%; margin: 10px 0; padding: 10px;">
-    
+    <input type="text" id="user" placeholder="Nadimak">
+    <input type="password" id="pass" placeholder="Lozinka">
     <div id="secret-area" class="hidden">
-        <input type="text" id="skey" placeholder="Tajna šifra (zaštita)" style="width:100%; margin: 5px 0; padding: 10px;">
-        <p style="font-size: 0.8rem; color: #f39c12; margin: 5px 0;">Da li imaš kupon za nagradu?</p>
-        <input type="text" id="coupon" placeholder="Kod kupona" style="width:100%; margin: 5px 0; padding: 10px;">
+        <input type="text" id="skey" placeholder="Tajna šifra (zaštita)">
+        <p style="font-size: 12px; color: #f39c12; margin: 10px 0 5px;">Imate li kupon za nagradu?</p>
+        <input type="text" id="coupon" placeholder="Kod kupona">
     </div>
-    
-    <button onclick="login()" style="width:100%; background: #f39c12; color:white; margin-top:15px;">Ulaz u Arenu</button>
+    <button class="btn-gold" onclick="login()" style="margin-top:15px;">ULAZ U ARENU</button>
 </div>
 
 <div id="lobby-screen" class="main-container hidden">
-    <div class="side-panel">
+    <div class="panel side">
         <h4>Online Igrači</h4>
-        <div id="online-list"></div>
+        <small style="color: #777;">(Klikni za profil)</small>
+        <div id="online-list" style="margin-top:15px;"></div>
+    </div>
+
+    <div class="panel center">
+        <h2 id="greet" style="margin-top:0;">Dobrodošli</h2>
+        <div id="chat-box" style="flex:1; background:#111; padding:10px; overflow-y:auto; border-radius:5px; font-size:14px;"></div>
+        <input type="text" id="chat-in" placeholder="Napiši poruku u lobby i pritisni Enter...">
         
-        <div id="radio-space">
-            <p style="font-size: 0.8rem;">Radio Stanice</p>
-            <button disabled style="font-size: 0.7rem;">Uskoro Play</button>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
+            <button style="background:#27ae60; color:white;" onclick="location.href='/kvizovi/vjesala'">Vješala ✅</button>
+            <button class="btn-locked" disabled>Učilica 🔒</button>
+            <button class="btn-locked" disabled>Potjera 🔒</button>
+            <button class="btn-locked" disabled>Milijunaš 🔒</button>
         </div>
     </div>
 
-    <div class="center-panel">
-        <h2 id="greet">Dobrodošli!</h2>
-        <div id="chat-box"></div>
-        <input type="text" id="chat-in" placeholder="Poruka u lobby..." style="background:#333; color:white; border:none; padding:10px;">
-        
-        <div class="grid">
-            <button class="btn-active" onclick="location.href='/kvizovi/vjesala'">Vješala</button>
-            <button class="btn-locked">Učilica (Uskoro)</button>
-            <button class="btn-locked">Potjera (Uskoro)</button>
-            <button class="btn-locked">Milijunaš (Uskoro)</button>
+    <div class="panel side">
+        <h4>Moj Račun</h4>
+        <p><div class="r-coin">R</div> <span id="my-gold">0</span> zlata</p>
+        <p>🔥 Streak: <span id="my-streak">0</span> dana</p>
+        <hr style="border:0; border-top:1px solid #333;">
+        <div id="radio-space" style="text-align:center; padding:10px; border:1px dashed #444;">
+            <p style="font-size:12px;">Radio Arena 📻</p>
+            <button style="font-size:10px; background:#555;">Uskoro Play</button>
         </div>
+        <button class="btn-red" onclick="logout()">Odjava</button>
     </div>
+</div>
 
-    <div class="side-panel">
-        <h4>Moj Profil</h4>
-        <p>💰 Coins: <span id="p-coins">0</span></p>
-        <hr>
-        <div id="p-stats">
-            <p style="font-size:0.8rem; color:#888;">Nema odigranih kvizova.</p>
-        </div>
-        <button onclick="logout()" style="background:#c0392b; color:white; width:100%; margin-top:50px;">Odjava</button>
-    </div>
+<div id="profile-modal" class="hidden">
+    <h3 id="modal-name">Igrač</h3>
+    <p><div class="r-coin">R</div> <span id="modal-gold">0</span> zlata</p>
+    <div id="modal-stats" style="text-align: left; background:#111; padding:10px; border-radius:5px; font-size:13px;"></div>
+    <button onclick="closeModal()" style="margin-top:15px; background:#444; color:white;">Zatvori</button>
 </div>
 
 <script>
@@ -88,51 +103,53 @@
     let myName = "";
 
     async function login() {
-        const username = document.getElementById('user').value;
-        const password = document.getElementById('pass').value;
-        const secretKey = document.getElementById('skey').value;
-        const coupon = document.getElementById('coupon').value;
+        const u = document.getElementById('user').value;
+        const p = document.getElementById('pass').value;
+        const s = document.getElementById('skey').value;
+        const c = document.getElementById('coupon').value;
 
         const res = await fetch('/api/login', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ username, password, secretKey: secretKey || null, coupon })
+            body: JSON.stringify({ username: u, password: p, secretKey: s || null, coupon: c })
         });
 
         const data = await res.json();
         if (res.status === 400 && data.firstLogin) {
             document.getElementById('secret-area').classList.remove('hidden');
-            alert("Prva prijava! Popunite zaštitu i kupon.");
+            alert("Prva prijava! Unesite tajnu šifru.");
         } else if (res.ok) {
-            myName = username;
-            localStorage.setItem('arena_user', username);
-            loadLobby(data);
+            myName = u;
+            localStorage.setItem('arena_user', u);
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('lobby-screen').classList.remove('hidden');
+            document.getElementById('my-gold').innerText = data.coins;
+            document.getElementById('my-streak').innerText = data.streak;
+            document.getElementById('greet').innerText = `Pozdrav, ${u}!`;
+            socket.emit('login-success', u);
         } else {
             alert(data.message);
         }
     }
 
-    function loadLobby(data) {
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('lobby-screen').classList.remove('hidden');
-        document.getElementById('greet').innerText = `Pozdrav, ${myName}!`;
-        document.getElementById('p-coins').innerText = data.coins || 0;
-        
-        // Dinamička statistika
-        if (data.stats && Object.keys(data.stats).length > 0) {
-            let html = "";
-            for (let kviz in data.stats) {
-                html += `<p>${kviz}: ${data.stats[kviz].wins} Pobjeda</p>`;
-            }
-            document.getElementById('p-stats').innerHTML = html;
+    async function viewPlayer(target) {
+        const res = await fetch(`/api/user-stats/${target}`);
+        const data = await res.json();
+        if (res.ok) {
+            document.getElementById('modal-name').innerText = data.username;
+            document.getElementById('modal-gold').innerText = data.coins;
+            let html = "<b>Uspjesi:</b><br>";
+            if (!data.stats || Object.keys(data.stats).length === 0) html += "Još nema odigranih kvizova.";
+            for (let k in data.stats) html += `• ${k}: ${data.stats[k].wins} pobjeda<br>`;
+            document.getElementById('modal-stats').innerHTML = html;
+            document.getElementById('profile-modal').classList.remove('hidden');
         }
-
-        socket.emit('login-success', myName);
     }
 
-    // Chat logika
+    function closeModal() { document.getElementById('profile-modal').classList.add('hidden'); }
+
     document.getElementById('chat-in').addEventListener('keypress', (e) => {
-        if(e.key === 'Enter') {
+        if(e.key === 'Enter' && e.target.value.trim() !== "") {
             socket.emit('send-msg', e.target.value);
             e.target.value = "";
         }
@@ -140,28 +157,24 @@
 
     socket.on('receive-msg', (data) => {
         const box = document.getElementById('chat-box');
-        box.innerHTML += `<div><b>${data.user}:</b> ${data.text}</div>`;
+        box.innerHTML += `<div><b style="color:#f39c12;">${data.user}:</b> ${data.text}</div>`;
         box.scrollTop = box.scrollHeight;
     });
 
     socket.on('update-online-list', (users) => {
         let html = "";
         for (let u in users) {
-            let dotClass = users[u].status === 'online' ? 'online' : 'away';
-            html += `<div class="user-item"><span class="dot ${dotClass}"></span>${u}</div>`;
+            let dot = users[u].status === 'online' ? 'online' : 'away';
+            html += `<div class="user-item" onclick="viewPlayer('${u}')"><span class="dot ${dot}"></span>${u}</div>`;
         }
         document.getElementById('online-list').innerHTML = html;
     });
 
-    // Detekcija "Odsutan" statusa
     document.addEventListener('visibilitychange', () => {
         socket.emit('change-status', document.hidden ? 'away' : 'online');
     });
 
-    function logout() {
-        localStorage.removeItem('arena_user');
-        location.reload();
-    }
+    function logout() { localStorage.removeItem('arena_user'); location.reload(); }
 </script>
 </body>
 </html>
