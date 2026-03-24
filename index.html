@@ -2,46 +2,58 @@
 <html lang="hr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rekvizit Arena - Ulaz</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .arena-box { background: #2a2a2a; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); width: 350px; text-align: center; }
-        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; box-sizing: border-box; font-size: 1rem; }
-        input { background: #333; color: white; border: 1px solid #444; }
-        button { background: #f39c12; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        button:hover { background: #e67e22; }
-        .logout-btn { background: #c0392b; }
-        .logout-btn:hover { background: #a93226; }
-        .link { color: #f39c12; cursor: pointer; font-size: 0.9rem; text-decoration: underline; margin-top: 10px; display: block; }
-        .hidden { display: none !important; }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .arena-box { background: #1e1e1e; padding: 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); width: 400px; text-align: center; }
+        .dashboard-layout { width: 800px; display: flex; gap: 20px; }
+        input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: none; font-size: 1rem; }
+        input { background: #2c2c2c; color: white; }
+        button { background: #f39c12; color: white; font-weight: bold; cursor: pointer; }
+        .quiz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; }
+        .quiz-btn { background: #2c3e50; padding: 15px; border-radius: 8px; font-size: 0.9rem; }
+        .active { background: #27ae60 !important; cursor: pointer; }
+        .locked { opacity: 0.5; cursor: not-allowed; }
         
-        /* Walking Banner [cite: 2026-02-19] */
-        .marquee { overflow: hidden; white-space: nowrap; background: #333; padding: 10px; margin: 15px 0; border: 1px solid #f39c12; position: relative; }
-        .marquee span { display: inline-block; padding-left: 100%; animation: marquee 12s linear infinite; color: #f39c12; font-weight: bold; }
-        @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
+        /* CHAT STIL [cite: 2026-02-19] */
+        #chat-section { flex: 1; background: #252525; border-radius: 8px; display: flex; flex-direction: column; padding: 10px; height: 400px; }
+        #chat-messages { flex: 1; overflow-y: auto; text-align: left; font-size: 0.85rem; padding: 5px; border-bottom: 1px solid #444; }
+        .msg { margin-bottom: 5px; }
+        .msg b { color: #f39c12; }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
 <div class="arena-box" id="login-container">
     <h2>Rekvizit Arena</h2>
-    <input type="text" id="username" placeholder="Nadimak" autocomplete="username">
-    <input type="password" id="password" placeholder="Lozinka" autocomplete="current-password">
+    <input type="text" id="username" placeholder="Nadimak">
+    <input type="password" id="password" placeholder="Lozinka">
     <div id="first-login-section" class="hidden">
         <input type="text" id="secretKey" placeholder="Tajna šifra (samo prvi put)">
     </div>
-    <button type="button" id="login-btn">Ulaz u Arenu</button>
-    <span class="link" onclick="toggleForms('reset-container')">Zaboravljena lozinka?</span>
+    <button onclick="handleLogin()">Ulaz u Arenu</button>
+    <small onclick="toggleForms('reset-container')" style="cursor:pointer; color:#f39c12;">Zaboravljena lozinka?</small>
 </div>
 
-<div class="arena-box hidden" id="dashboard-container">
-    <h2 id="welcome-user">Dobrodošli!</h2>
-    <div class="marquee">
-        <span>Učilica - coming soon to Rekvizit Arena! 🎓</span>
+<div class="arena-box dashboard-layout hidden" id="dashboard-container">
+    <div style="flex: 1.5; text-align: left;">
+        <h2 id="welcome-user">Pozdrav!</h2>
+        <div class="quiz-grid">
+            <button class="quiz-btn active" onclick="location.href='/kvizovi/vjesala'">Vješala <br><small>Aktivno ✅</small></button>
+            <button class="quiz-btn locked" disabled>Učilica <br><small>Uskoro 🔒</small></button>
+            <button class="quiz-btn locked" disabled>Milijunaš <br><small>Uskoro 🔒</small></button>
+            <button class="quiz-btn locked" disabled>Potjera <br><small>Uskoro 🔒</small></button>
+        </div>
+        <button onclick="handleLogout()" style="background:#c0392b; margin-top:20px;">Odjava</button>
     </div>
-    <button onclick="location.href='/kvizovi/vjesala'">Igraj Vješala</button>
-    <button class="logout-btn" onclick="handleLogout()">Odjava</button>
+
+    <div id="chat-section">
+        <h4 style="margin: 0 0 10px 0;">Glavni Chat Servera</h4>
+        <div id="chat-messages"></div>
+        <input type="text" id="chat-input" placeholder="Napiši poruku..." onkeypress="if(event.key==='Enter') sendMessage()">
+    </div>
 </div>
 
 <div class="arena-box hidden" id="reset-container">
@@ -49,99 +61,73 @@
     <input type="text" id="reset-username" placeholder="Nadimak">
     <input type="text" id="reset-secret" placeholder="Tajna šifra">
     <input type="password" id="new-password" placeholder="Nova lozinka">
-    <button type="button" onclick="handleReset()">Promijeni lozinku</button>
-    <span class="link" onclick="toggleForms('login-container')">Povratak na login</span>
+    <button onclick="handleReset()">Spremi novu lozinku</button>
+    <button onclick="toggleForms('login-container')" style="background:#555;">Povratak</button>
 </div>
 
 <script>
-    // 1. FUNKCIJA ZA LOGIN
+    const socket = io();
+    let currentUsername = "";
+
     async function handleLogin() {
         const u = document.getElementById('username').value;
         const p = document.getElementById('password').value;
         const s = document.getElementById('secretKey').value;
 
-        if(!u || !p) {
-            alert("Molimo unesite nadimak i lozinku.");
-            return;
-        }
-
-        try {
-            const response = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: u, password: p, secretKey: s || null })
-            });
-
-            const res = await response.json();
-
-            if (response.status === 400 && res.firstLogin) {
-                document.getElementById('first-login-section').classList.remove('hidden');
-                alert("Prva prijava! Unesite tajnu šifru kako biste zaštitili profil.");
-            } else if (res.success) {
-                localStorage.setItem('arena_user', u);
-                showDashboard(u);
-            } else {
-                alert(res.message || "Pogrešan nadimak ili lozinka.");
-            }
-        } catch (err) {
-            alert("Greška u komunikaciji sa serverom.");
-        }
-    }
-
-    // 2. OSLUŠKIVAČI ZA KLIK I ENTER
-    document.addEventListener('DOMContentLoaded', () => {
-        const loginBtn = document.getElementById('login-btn');
-        const inputs = document.querySelectorAll('#login-container input');
-
-        // Klik na gumb
-        loginBtn.addEventListener('click', handleLogin);
-
-        // Pritiskom na Enter u bilo kojem polju
-        inputs.forEach(input => {
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    handleLogin();
-                }
-            });
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: u, password: p, secretKey: s || null })
         });
 
-        // Provjera postojeće sesije
-        const savedUser = localStorage.getItem('arena_user');
-        if (savedUser) showDashboard(savedUser);
-    });
-
-    function showDashboard(username) {
-        document.getElementById('login-container').classList.add('hidden');
-        document.getElementById('reset-container').classList.add('hidden');
-        document.getElementById('dashboard-container').classList.remove('hidden');
-        document.getElementById('welcome-user').innerText = `Pozdrav, ${username}!`;
+        const res = await response.json();
+        if (response.status === 400 && res.firstLogin) {
+            document.getElementById('first-login-section').classList.remove('hidden');
+            alert("Unesite tajnu šifru za registraciju!");
+        } else if (response.ok) {
+            localStorage.setItem('arena_user', u);
+            currentUsername = u;
+            showDashboard(u);
+        } else {
+            alert(res.message || "Greška!");
+        }
     }
+
+    function showDashboard(u) {
+        document.getElementById('login-container').classList.add('hidden');
+        document.getElementById('dashboard-container').classList.remove('hidden');
+        document.getElementById('welcome-user').innerText = `Pozdrav, ${u}!`;
+        socket.emit('joinMainChat', u);
+    }
+
+    function sendMessage() {
+        const input = document.getElementById('chat-input');
+        if (input.value.trim() !== "") {
+            socket.emit('sendMainMessage', input.value);
+            input.value = "";
+        }
+    }
+
+    socket.on('chatMessage', (data) => {
+        const chat = document.getElementById('chat-messages');
+        chat.innerHTML += `<div class="msg"><b>${data.user}:</b> ${data.text}</div>`;
+        chat.scrollTop = chat.scrollHeight;
+    });
 
     function handleLogout() {
         localStorage.removeItem('arena_user');
         location.reload();
     }
 
-    function toggleForms(targetId) {
+    function toggleForms(id) {
         document.getElementById('login-container').classList.add('hidden');
         document.getElementById('reset-container').classList.add('hidden');
-        document.getElementById(targetId).classList.remove('hidden');
+        document.getElementById(id).classList.remove('hidden');
     }
 
-    async function handleReset() {
-        const u = document.getElementById('reset-username').value;
-        const s = document.getElementById('reset-secret').value;
-        const n = document.getElementById('new-password').value;
-
-        const response = await fetch('/api/reset-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: u, secretKey: s, newPassword: n })
-        });
-
-        const res = await response.json();
-        alert(res.message);
-        if (res.success) toggleForms('login-container');
+    window.onload = () => {
+        const saved = localStorage.getItem('arena_user');
+        if (saved) { currentUsername = saved; showDashboard(saved); }
     }
 </script>
 </body>
