@@ -8,18 +8,17 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Uvoz logike za vješala iz mape kvizovi
-const vjesala = require('./kvizovi/vjesala');
-
 app.use(express.json());
 app.use(express.static(__dirname));
 
+// POVEZIVANJE NA BAZU
 const dbURI = "mongodb+srv://rekvizit:arenakviz@rekvizit.o6ugw5r.mongodb.net/RekvizitArena?retryWrites=true&w=majority&appName=Rekvizit";
 
 mongoose.connect(dbURI)
     .then(() => console.log('✅ Arena povezana'))
     .catch(err => console.log('❌ Greška baze:', err));
 
+// --- 1. KORAK: DEFINICIJA MODELA (MORA BITI PRIJE KVIZOVA) ---
 const UserSchema = new mongoose.Schema({
     username: { type: String, unique: true, required: true },
     password: { type: String, required: true },
@@ -31,7 +30,8 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
-// Inicijalizacija vješala (prosljeđujemo socket.io instancu)
+// --- 2. KORAK: UCITAVANJE KVIZOVA ---
+const vjesala = require('./kvizovi/vjesala');
 vjesala.inicijalizirajVjesala(io);
 
 let onlineUsers = {};
@@ -64,7 +64,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// RUTA ZA KVIZ
+// RUTE
 app.get('/kvizovi/vjesala', (req, res) => {
     res.sendFile(path.join(__dirname, 'kvizovi', 'vjesala.html'));
 });
@@ -84,7 +84,7 @@ app.post('/api/login', async (req, res) => {
                 coins: pocetnoZlato, loginStreak: 1, lastLogin: new Date() 
             });
             await user.save();
-            return res.json({ success: true, coins: user.coins, streak: user.loginStreak, stats: user.stats });
+            return res.json({ success: true, coins: user.coins, streak: user.loginStreak });
         }
 
         if (user.password === password) {
@@ -107,13 +107,7 @@ app.post('/api/login', async (req, res) => {
                 await user.save();
             }
 
-            if (user.loginStreak === 0) {
-                user.loginStreak = 1;
-                user.coins += 10;
-                await user.save();
-            }
-
-            res.json({ success: true, coins: user.coins, streak: user.loginStreak, stats: user.stats });
+            res.json({ success: true, coins: user.coins, streak: user.loginStreak });
         } else {
             res.status(401).json({ success: false, message: "Netočna lozinka!" });
         }
