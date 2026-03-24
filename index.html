@@ -2,164 +2,97 @@
 <html lang="hr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sretan Rođendan, Amina! ❤️</title>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Great+Vibes&family=Poppins:wght@300;500&display=swap" rel="stylesheet">
+    <title>Rekvizit Arena - Ulaz</title>
     <style>
-        :root { --pink: #ff85a2; --dark-pink: #f06292; --soft-white: #fff5f7; }
-        body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: var(--soft-white); font-family: 'Poppins', sans-serif; overflow: hidden; }
-
-        /* Kontejner za srce */
-        .heart-wrapper { position: relative; width: 300px; height: 260px; cursor: pointer; transition: transform 0.3s; z-index: 5; }
-        .heart-wrapper:hover { transform: scale(1.05); }
-
-        /* Ruže (Okvir) */
-        .rose-border { position: absolute; top: -20px; left: -20px; right: -20px; bottom: -20px; border: 15px double var(--pink); border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%; z-index: 1; pointer-events: none; }
-
-        /* Glavno srce podijeljeno na dvoja vrata */
-        .heart-door { position: absolute; width: 50%; height: 100%; background: var(--pink); z-index: 3; transition: transform 1.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .left-door { left: 0; border-radius: 150px 150px 0 150px; transform-origin: left; border-right: 1px solid rgba(255,255,255,0.3); }
-        .right-door { right: 0; border-radius: 150px 150px 150px 0; transform-origin: right; }
-
-        .open .left-door { transform: rotateY(-140deg); }
-        .open .right-door { transform: rotateY(140deg); }
-
-        /* Unutrašnjost srca (Tekst) */
-        .content { position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 25px; box-sizing: border-box; z-index: 2; background: white; border-radius: 150px 150px 150px 150px / 120px 120px 180px 180px; }
-        .text { font-family: 'Dancing Script', cursive; font-size: 1.1rem; color: #444; opacity: 0; transform: translateY(20px); transition: all 1s ease; line-height: 1.4; }
-        .open .text { opacity: 1; transform: translateY(0); transition-delay: 1.5s; }
-
-        /* MODAL */
-        #modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 133, 162, 0.4); backdrop-filter: blur(8px); z-index: 100; display: flex; justify-content: center; align-items: center; transition: opacity 0.5s ease; }
-        .modal-box { 
-            background: white; 
-            padding: 40px; 
-            border-radius: 30px; 
-            text-align: center; 
-            width: 85%; 
-            max-width: 400px; 
-            box-shadow: 0 20px 40px rgba(240, 98, 146, 0.2);
-            animation: fadeInModal 0.8s ease-out;
-        }
-        @keyframes fadeInModal { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
-        
-        .modal-box h3 { font-family: 'Great Vibes', cursive; font-size: 2.2rem; color: var(--dark-pink); margin-bottom: 15px; }
-        .modal-box p { font-size: 0.9rem; color: #777; margin-bottom: 20px; }
-
-        input[type="date"] { padding: 12px; margin: 10px 0; border: 2px solid #ffe0e9; border-radius: 15px; width: 100%; font-size: 1rem; box-sizing: border-box; outline: none; color: #555; }
-        input[type="date"]:focus { border-color: var(--pink); }
-
-        button { background: linear-gradient(45deg, var(--pink), var(--dark-pink)); color: white; border: none; padding: 12px 35px; border-radius: 25px; cursor: pointer; font-weight: 500; letter-spacing: 1px; transition: all 0.3s; margin-top: 15px; }
-        button:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(240, 98, 146, 0.4); }
-
-        #key { position: absolute; font-size: 50px; display: none; z-index: 10; transition: all 1s ease; }
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .arena-box { background: #2a2a2a; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); width: 350px; text-align: center; }
+        input, select, button { width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; box-sizing: border-box; }
+        button { background: #f39c12; color: white; font-weight: bold; cursor: pointer; }
+        .link { color: #f39c12; cursor: pointer; font-size: 0.9rem; text-decoration: underline; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <audio id="audioIntro">
-        <source src="pjesma0.mp3" type="audio/mpeg">
-    </audio>
-    <audio id="audioMain" loop>
-        <source src="pjesma.mp3" type="audio/mpeg">
-    </audio>
-
-    <div class="heart-wrapper" id="heartBox">
-        <div class="rose-border"></div>
-        <div class="heart-door left-door"></div>
-        <div class="heart-door right-door"></div>
-        <div class="content">
-            <p class="text">
-               Sretan rođendan ženi koja moj svijet čini boljim mjestom svakim svojim osmijehom.
-               Hvala ti što si moj oslonac, moja radost i najbolja prijateljica.
-               Volim te više nego što riječi mogu opisati i radujem se svakoj novoj godini koju ćemo provesti jedno uz drugo.
-               Neka ti ovaj dan bude poseban baš onako kako si ti meni. <br>
-                <strong>Volim te zauvijek!</strong>
-            </p>
-        </div>
+<div class="arena-box" id="login-form">
+    <h2>Rekvizit Arena</h2>
+    <input type="text" id="username" placeholder="Nadimak" required>
+    <input type="password" id="password" placeholder="Lozinka" required>
+    <div id="first-login-section" class="hidden">
+        <input type="text" id="secretKey" placeholder="Unesite tajnu šifru (prva prijava)">
     </div>
+    <button onclick="handleLogin()">Ulaz u Arenu</button>
+    <div class="link" onclick="showResetForm()">Zaboravljena lozinka?</div>
+</div>
 
-    <div id="key">🔑</div>
+<div class="arena-box hidden" id="reset-form">
+    <h2>Reset Lozinke</h2>
+    <input type="text" id="reset-username" placeholder="Nadimak">
+    <input type="text" id="reset-secret" placeholder="Tajna šifra">
+    <select id="reset-reason">
+        <option value="forgot">Zaboravljena lozinka</option>
+        <option value="hack">Sumnja na krađu profila</option>
+        <option value="other">Ostalo</option>
+    </select>
+    <input type="password" id="new-password" placeholder="Nova lozinka">
+    <button onclick="handleReset()">Promijeni lozinku</button>
+    <div class="link" onclick="showLoginForm()">Povratak</div>
+</div>
 
-    <div id="modal">
-        <div class="modal-box">
-            <h3>Dobrodošla, Amina... ❤️</h3>
-            <p>Samo jedna osoba može otvoriti ovo srce. <br> Molim te, potvrdi svoj datum rođenja:</p>
-            <input type="date" id="birthDate">
-            <br>
-            <button onclick="checkDate()">OTKLJUČAJ SRCE</button>
-        </div>
-    </div>
+<script>
+    async function handleLogin() {
+        const data = {
+            username: document.getElementById('username').value,
+            password: document.getElementById('password').value,
+            secretKey: document.getElementById('secretKey').value || null
+        };
 
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-    <script>
-        const audioIntro = document.getElementById('audioIntro');
-        const audioMain = document.getElementById('audioMain');
-        const modal = document.getElementById('modal');
-        const heartBox = document.getElementById('heartBox');
-        let isVerified = false;
+        const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
 
-        // Aktivacija prve pjesme na bilo koji dodir na stranici (zaobilaženje restrikcija)
-        document.addEventListener('click', () => {
-            if (audioIntro.paused && !isVerified) {
-                audioIntro.play().catch(e => console.log("Audio play blocked"));
-            }
-        }, { once: true });
-
-        async function checkDate() {
-            const datum = document.getElementById('birthDate').value;
-            if (!datum) {
-                alert("Molim te, odaberi datum.");
-                return;
-            }
-
-            const res = await fetch('/provjeri-datum', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ datum })
-            });
-            const data = await res.json();
-
-            if (data.success) {
-                isVerified = true;
-                modal.style.opacity = '0';
-                setTimeout(() => { modal.style.display = 'none'; }, 500);
-
-                // Čekanje da pjesma0 završi prije otvaranja
-                if (!audioIntro.ended && !audioIntro.paused) {
-                    audioIntro.onended = () => startCelebration();
-                } else {
-                    startCelebration();
-                }
-            } else {
-                alert(data.message);
-            }
+        const res = await response.json();
+        if (response.status === 400 && res.firstLogin) {
+            document.getElementById('first-login-section').classList.remove('hidden');
+            alert("Prva prijava! Unesite tajnu šifru za zaštitu profila.");
+        } else if (res.success) {
+            alert("Dobrodošli u Arenu!");
+            // Ovdje ćeš kasnije preusmjeriti na izbor kvizova (Učilica, Vješala itd.) [cite: 2026-02-19]
+        } else {
+            alert(res.message);
         }
+    }
 
-        function startCelebration() {
-            // Pokretanje glavne rođendanske pjesme
-            audioMain.play();
+    function showResetForm() {
+        document.getElementById('login-form').classList.add('hidden');
+        document.getElementById('reset-form').classList.remove('hidden');
+    }
 
-            const key = document.getElementById('key');
-            key.style.display = 'block';
-            key.style.top = '50%';
-            key.style.left = '50%';
-            key.style.transform = 'translate(-50%, -50%) rotate(45deg)';
+    function showLoginForm() {
+        document.getElementById('reset-form').classList.add('hidden');
+        document.getElementById('login-form').classList.remove('hidden');
+    }
 
-            setTimeout(() => {
-                key.style.transform = 'translate(-50%, -50%) rotate(90deg) scale(1.5)';
-                setTimeout(() => {
-                    key.style.opacity = '0';
-                    heartBox.classList.add('open');
-                    confetti({ 
-                        particleCount: 150, 
-                        spread: 70, 
-                        origin: { y: 0.6 },
-                        colors: ['#ff85a2', '#f06292', '#ffffff']
-                    });
-                }, 1000);
-            }, 1000);
-        }
-    </script>
+    async function handleReset() {
+        const data = {
+            username: document.getElementById('reset-username').value,
+            secretKey: document.getElementById('reset-secret').value,
+            newPassword: document.getElementById('new-password').value
+        };
+
+        const response = await fetch('/api/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const res = await response.json();
+        alert(res.message);
+        if (res.success) showLoginForm();
+    }
+</script>
+
 </body>
 </html>

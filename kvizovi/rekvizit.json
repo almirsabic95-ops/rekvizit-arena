@@ -1,0 +1,19 @@
+{
+  "kviz_info": {
+    "ime": "Rekvizit Arena",
+    "boja_teme": "#00f2ea",
+    "sekunda_trajanje": 30,
+    "tablice": ["Dnevna", "Tjedna", "Mjesečna", "Ukupna"]
+  },
+  "pravila_bodovanja": {
+    "lako": { "postotak_prvi": 0.60, "osnovni_bodovi": 100 },
+    "srednje": { "postotak_prvi": 0.70, "osnovni_bodovi": 200 },
+    "tesko": { "postotak_prvi": 0.80, "osnovni_bodovi": 300 },
+    "kazna": 2
+  },
+  "zastita": {
+    "tab_switch_kazna": true,
+    "spam_detekcija": true
+  },
+  "pitanja_izvor": "https://opentdb.com/api.php?amount=50&type=multiple"
+}
