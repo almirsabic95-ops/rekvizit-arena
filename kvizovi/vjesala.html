@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vješala - Rekvizit Arena</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root { --glavna: #3498db; --tamna: #121212; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--tamna); color: white; text-align: center; padding: 20px; margin: 0; }
+        .game-card { background: #1e1e1e; max-width: 600px; margin: 40px auto; padding: 25px; border-radius: 15px; border: 2px solid var(--glavna); box-shadow: 0 0 30px rgba(0,0,0,0.5); }
+        .word-display { font-size: clamp(30px, 8vw, 45px); letter-spacing: 8px; margin: 25px 0; font-family: 'Courier New', monospace; color: var(--glavna); font-weight: bold; overflow-wrap: break-word; }
+        .input-group { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+        input { padding: 15px; width: 90%; max-width: 300px; background: #333; border: 1px solid #444; color: white; border-radius: 5px; font-size: 18px; text-align: center; }
+        button { padding: 15px 40px; background: var(--glavna); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px; width: 90%; max-width: 300px; }
+        #logs { background: #111; height: 200px; overflow-y: auto; margin-top: 25px; padding: 15px; border-radius: 5px; text-align: left; font-size: 14px; border-left: 4px solid var(--glavna); line-height: 1.6; }
+        .r-coin { display: inline-block; width: 14px; height: 14px; background: gold; border-radius: 50%; border: 1px solid #b8860b; vertical-align: middle; }
+        .nav-back { position: absolute; top: 15px; left: 15px; color: var(--glavna); text-decoration: none; font-weight: bold; font-size: 14px; }
+        @media (min-width: 600px) { .input-group { flex-direction: row; justify-content: center; } button { width: auto; } }
+    </style>
+</head>
+<body>
+    <a href="/" class="nav-back">⬅ NATRAG U LOBBY</a>
+
+    <div class="game-card">
+        <h2 style="color: var(--glavna); margin-top: 0;">Vješala Arena</h2>
+        <p>Slovo (+1 <span class="r-coin"></span>) | Riječ (+10 <span class="r-coin"></span>)</p>
+        
+        <div class="word-display" id="display">_ _ _ _ _</div>
+        
+        <div class="input-group">
+            <input type="text" id="input" maxlength="20" placeholder="Upiši slovo ili riječ..." autocomplete="off" onkeypress="if(event.key==='Enter') posalji()">
+            <button onclick="posalji()">POŠALJI</button>
+        </div>
+        
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        const socket = io();
+        const korisnik = localStorage.getItem('arena_user');
+
+        if(!korisnik) window.location.href = "/";
+        
+        socket.emit('login-success', korisnik);
+        socket.emit('vjesala-trazi-stanje');
+
+        function posalji() {
+            const el = document.getElementById('input');
+            const val = el.value.trim();
+            if(val !== "") {
+                socket.emit('vjesala-pokusaj', { input: val });
+                el.value = "";
+                el.focus();
+            }
+        }
+
+        socket.on('vjesala-nova-runda', (data) => {
+            document.getElementById('display').innerText = data.prikaz;
+            dodajLog("<span style='color: #2ecc71;'>--- Nova runda je počela! ---</span>");
+        });
+
+        socket.on('vjesala-update', (data) => {
+            document.getElementById('display').innerText = data.prikaz;
+            dodajLog(`🔹 <b>${data.user}</b> je pogodio slovo <b>${data.slovo}</b>!`);
+        });
+
+        socket.on('vjesala-poruka', (data) => dodajLog(data.text));
+
+        function dodajLog(msg) {
+            const l = document.getElementById('logs');
+            const div = document.createElement('div');
+            div.style.marginBottom = "5px";
+            div.innerHTML = msg;
+            l.prepend(div);
+        }
+    </script>
+</body>
+</html>

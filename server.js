@@ -1,11 +1,15 @@
 const express = require('express');
 const http = require('http');
 const mongoose = require('mongoose');
+const path = require('path');
 const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+
+// Uvoz logike za vješala iz mape kvizovi
+const vjesala = require('./kvizovi/vjesala');
 
 app.use(express.json());
 app.use(express.static(__dirname));
@@ -27,6 +31,9 @@ const UserSchema = new mongoose.Schema({
 });
 const User = mongoose.model('User', UserSchema);
 
+// Inicijalizacija vješala (prosljeđujemo socket.io instancu)
+vjesala.inicijalizirajVjesala(io);
+
 let onlineUsers = {};
 
 io.on('connection', (socket) => {
@@ -35,15 +42,20 @@ io.on('connection', (socket) => {
         onlineUsers[username] = { status: 'online', id: socket.id };
         io.emit('update-online-list', onlineUsers);
     });
+
     socket.on('change-status', (status) => {
         if (onlineUsers[socket.username]) {
             onlineUsers[socket.username].status = status;
             io.emit('update-online-list', onlineUsers);
         }
     });
+
     socket.on('send-msg', (text) => {
-        if (socket.username) io.emit('receive-msg', { user: socket.username, text });
+        if (socket.username) {
+            io.emit('receive-msg', { user: socket.username, text });
+        }
     });
+
     socket.on('disconnect', () => {
         if (socket.username) {
             delete onlineUsers[socket.username];
@@ -52,12 +64,16 @@ io.on('connection', (socket) => {
     });
 });
 
+// RUTA ZA KVIZ
+app.get('/kvizovi/vjesala', (req, res) => {
+    res.sendFile(path.join(__dirname, 'kvizovi', 'vjesala.html'));
+});
+
 app.post('/api/login', async (req, res) => {
     const { username, password, secretKey, coupon } = req.body;
     try {
         let user = await User.findOne({ username });
 
-        // REGISTRACIJA
         if (!user) {
             if (!secretKey) return res.status(400).json({ firstLogin: true });
             let pocetnoZlato = 10; 
@@ -71,7 +87,6 @@ app.post('/api/login', async (req, res) => {
             return res.json({ success: true, coins: user.coins, streak: user.loginStreak, stats: user.stats });
         }
 
-        // PRIJAVA (ADMIN I OSTALI)
         if (user.password === password) {
             const sada = new Date();
             const danasPocetak = new Date(sada.getFullYear(), sada.getMonth(), sada.getDate()).getTime();
@@ -92,7 +107,6 @@ app.post('/api/login', async (req, res) => {
                 await user.save();
             }
 
-            // Popravak ako je netko ostao na 0
             if (user.loginStreak === 0) {
                 user.loginStreak = 1;
                 user.coins += 10;
