@@ -6,140 +6,287 @@
     <title>Rekvizit Arena</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { --gold: #ffd700; --dark: #1a1a1a; --gray: #333; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--dark); color: white; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        
-        /* Login ekran */
-        #login-screen { background: #222; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; width: 300px; }
-        input { width: 90%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; background: #333; color: white; }
-        button { width: 100%; padding: 12px; background: var(--gold); border: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: black; transition: 0.3s; }
-        button:hover { background: #ffcc00; transform: scale(1.02); }
+        :root {
+            --accent: #00d4ff; /* Svijetlo plava (Cyan) */
+            --bg: #0b0f19;
+            --card: #161b2a;
+            --text: #ffffff;
+        }
 
-        /* Arena / Lobby ekran */
-        #arena-screen { display: none; width: 90%; max-width: 800px; text-align: center; }
-        .stats-bar { display: flex; justify-content: space-around; background: #222; padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px solid var(--gold); }
-        .stat-item { font-size: 1.2rem; }
-        .stat-item span { color: var(--gold); font-weight: bold; }
+        body {
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-        .menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; margin-top: 30px; }
-        .menu-card { background: #222; padding: 20px; border-radius: 10px; cursor: pointer; transition: 0.3s; border: 1px solid #444; text-decoration: none; color: white; }
-        .menu-card:hover { border-color: var(--gold); background: #2a2a2a; }
-        .menu-card h3 { margin: 10px 0 0 0; }
-        
-        .logout-btn { margin-top: 40px; background: transparent; color: #ff4444; border: 1px solid #ff4444; width: auto; padding: 8px 20px; }
+        /* LOGIN EKRAN - SVIJETLO PLAVA VERZIJA */
+        #login-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #1a2a44 0%, #0b0f19 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+
+        .login-card {
+            background: rgba(22, 27, 42, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid var(--accent);
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.2);
+            text-align: center;
+            width: 340px;
+            backdrop-filter: blur(10px);
+        }
+
+        .login-card h1 {
+            color: var(--accent);
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+        }
+
+        input {
+            width: 90%;
+            padding: 12px;
+            margin: 10px 0;
+            background: #0b0f19;
+            border: 1px solid #2d3748;
+            color: white;
+            border-radius: 8px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(0, 212, 255, 0.3); }
+
+        button.main-btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: 0.3s;
+        }
+
+        button.main-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4);
+        }
+
+        /* LOBBY EKRAN */
+        #arena-screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: row;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: var(--card);
+            border-right: 1px solid #2d3748;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .main-view {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 40px;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: #1e2538;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border-left: 4px solid var(--accent);
+        }
+
+        .stat-box small { color: #a0aec0; display: block; margin-bottom: 5px; }
+        .stat-box span { font-size: 1.8rem; font-weight: bold; color: var(--accent); }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 25px;
+            width: 100%;
+            max-width: 700px;
+        }
+
+        .game-link {
+            background: var(--card);
+            padding: 30px;
+            border-radius: 20px;
+            text-decoration: none;
+            color: white;
+            border: 1px solid #2d3748;
+            transition: 0.3s;
+            text-align: center;
+        }
+
+        .game-link:hover {
+            border-color: var(--accent);
+            background: #1e2538;
+            transform: translateY(-5px);
+        }
+
+        /* CHAT */
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            background: #0b0f19;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 0.9rem;
+        }
+
+        .chat-line { margin-bottom: 10px; border-bottom: 1px solid #1e2538; padding-bottom: 5px; }
+        .chat-name { color: var(--accent); font-weight: bold; margin-right: 5px; }
+
     </style>
 </head>
 <body>
 
     <div id="login-screen">
-        <h2 style="color: var(--gold);">REKVIZIT ARENA</h2>
-        <input type="text" id="usernameInput" placeholder="Korisničko ime">
-        <input type="password" id="passwordInput" placeholder="Lozinka">
-        <div id="first-login-fields" style="display: none;">
-            <input type="text" id="secretKeyInput" placeholder="Tajni ključ (samo prvi put)">
-            <input type="text" id="couponInput" placeholder="Kupon kod (opcionalno)">
+        <div class="login-card">
+            <h1>REKVIZIT ARENA</h1>
+            <input type="text" id="userInput" placeholder="Korisničko ime">
+            <input type="password" id="passInput" placeholder="Lozinka">
+            
+            <div id="firstTimeFields" style="display: none;">
+                <input type="text" id="secretInput" placeholder="Tajni ključ">
+                <input type="text" id="couponInput" placeholder="Kupon (opcionalno)">
+            </div>
+
+            <button class="main-btn" onclick="obaviPrijavu()">Uđi u Arenu</button>
+            <p id="errorMsg" style="color: #ff4b4b; font-size: 0.85rem; margin-top: 15px;"></p>
         </div>
-        <button onclick="handleLogin()">PRIDRUŽI SE</button>
-        <p id="login-msg" style="color: #ff4444; font-size: 0.8rem; margin-top: 10px;"></p>
     </div>
 
     <div id="arena-screen">
-        <h1 style="margin-bottom: 5px;">Dobrodošao, <span id="display-username" style="color: var(--gold);">Igrač</span>!</h1>
-        <div class="stats-bar">
-            <div class="stat-item">Zlatnici: <span id="user-coins">0</span> R</div>
-            <div class="stat-item">Niz (Streak): <span id="user-streak">0</span></div>
+        <div class="sidebar">
+            <h2 style="color: var(--accent); margin-top: 0;">Lobby Chat</h2>
+            <div id="chat-container"></div>
+            <input type="text" id="msgInput" placeholder="Poruka..." onkeypress="if(event.key==='Enter') posaljiPoruku()">
+            <button onclick="odjaviMe()" style="margin-top: 20px; background: none; border: 1px solid #ff4b4b; color: #ff4b4b; cursor: pointer; padding: 10px; border-radius: 5px;">ODJAVA</button>
         </div>
 
-        <div class="menu-grid">
-            <a href="/kvizovi/vjesala" class="menu-card">
-                <div style="font-size: 2rem;">🪢</div>
-                <h3>Vješala</h3>
-            </a>
-            <div class="menu-card" style="opacity: 0.5; cursor: not-allowed;">
-                <div style="font-size: 2rem;">❓</div>
-                <h3>Učilica (Uskoro)</h3>
-            </div>
+        <div class="main-view">
+            <h1 id="welcomeTxt">Dobrodošao!</h1>
+            
+            <div class="stats-row">
+                <div class="stat-box">
+                    <small>Zlatnici</small>
+                    <span id="user-coins">0</span>
+                </div>
+                <div class="stat-box">
+                    <small>Dnevni Niz</small>
+                    <span id="user-streak">0</span>
+                </div>
             </div>
 
-        <button class="logout-btn" onclick="handleLogout()">ODJAVA</button>
+            <div class="game-grid">
+                <a href="/kvizovi/vjesala" class="game-link">
+                    <div style="font-size: 3rem; margin-bottom: 10px;">🪢</div>
+                    <h3>VJEŠALA</h3>
+                    <p style="color: #a0aec0; font-size: 0.8rem;">Osvoji zlato pogađanjem riječi</p>
+                </a>
+                <div class="game-link" style="opacity: 0.4; cursor: default;">
+                    <div style="font-size: 3rem; margin-bottom: 10px;">🛡️</div>
+                    <h3>UČILICA</h3>
+                    <p style="color: #a0aec0; font-size: 0.8rem;">Dolazi uskoro...</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         const socket = io();
 
-        // 1. AUTOMATSKA PROVJERA PRI UCITAVANJU (localStorage Fix)
+        // 1. AUTOMATSKA PRIJAVA (localStorage provjera)
         window.addEventListener('load', () => {
-            const spremljenUser = localStorage.getItem('arena_user');
-            const spremljenPass = localStorage.getItem('arena_pass');
+            const spremljenU = localStorage.getItem('arena_user');
+            const spremljenP = localStorage.getItem('arena_pass');
 
-            if (spremljenUser && spremljenPass) {
-                console.log("🔄 Automatska prijava u tijeku...");
-                prijaviKorisnika(spremljenUser, spremljenPass);
+            if (spremljenU && spremljenP) {
+                console.log("🔄 Pronađena sesija, prijavljujem...");
+                izvrsiLoginAPI(spremljenU, spremljenP);
             }
         });
 
-        // 2. GLAVNA FUNKCIJA ZA LOGIN
-        async function handleLogin() {
-            const user = document.getElementById('usernameInput').value;
-            const pass = document.getElementById('passwordInput').value;
-            const secret = document.getElementById('secretKeyInput').value;
-            const coupon = document.getElementById('couponInput').value;
-
-            prijaviKorisnika(user, pass, secret, coupon);
+        async function obaviPrijavu() {
+            const u = document.getElementById('userInput').value;
+            const p = document.getElementById('passInput').value;
+            const s = document.getElementById('secretInput').value;
+            const c = document.getElementById('couponInput').value;
+            izvrsiLoginAPI(u, p, s, c);
         }
 
-        async function prijaviKorisnika(user, pass, secret = "", coupon = "") {
+        async function izvrsiLoginAPI(u, p, s="", c="") {
             try {
-                const res = await fetch('/api/login', {
+                const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        username: user, 
-                        password: pass, 
-                        secretKey: secret, 
-                        coupon: coupon 
-                    })
+                    body: JSON.stringify({ username: u, password: p, secretKey: s, coupon: c })
                 });
-
-                const data = await res.json();
+                
+                const data = await response.json();
 
                 if (data.success) {
-                    // SPREMANJE U LOCALSTORAGE (Da nas ne izbaci nakon kviza)
-                    localStorage.setItem('arena_user', user);
-                    localStorage.setItem('arena_pass', pass);
+                    // PAMTIMO DA NAS NE ODJAVI
+                    localStorage.setItem('arena_user', u);
+                    localStorage.setItem('arena_pass', p);
                     
-                    prikaziLobby(data);
+                    prikaziLobbyUI(data);
                 } else if (data.firstLogin) {
-                    document.getElementById('first-login-fields').style.display = 'block';
-                    document.getElementById('login-msg').innerText = "Prva prijava? Unesite tajni ključ.";
+                    document.getElementById('firstTimeFields').style.display = 'block';
+                    document.getElementById('errorMsg').innerText = "Potrebna prva registracija.";
                 } else {
-                    document.getElementById('login-msg').innerText = data.message || "Greška pri prijavi.";
+                    document.getElementById('errorMsg').innerText = data.message || "Neuspješna prijava.";
                 }
             } catch (err) {
-                console.error("Greška:", err);
+                console.error("Greška na serveru:", err);
             }
         }
 
-        // 3. PRIKAZ LOBBYJA I PODATAKA
-        function prikaziLobby(data) {
+        function prikaziLobbyUI(data) {
             document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('arena-screen').style.display = 'block';
+            document.getElementById('arena-screen').style.display = 'flex';
             
-            // Prikaz podataka s ispravkom nula
-            document.getElementById('display-username').innerText = data.username || localStorage.getItem('arena_user');
             document.getElementById('user-coins').innerText = data.coins;
             document.getElementById('user-streak').innerText = data.streak;
-
-            // Socket.io prijava za online listu
-            socket.emit('login-success', data.username || localStorage.getItem('arena_user'));
+            document.getElementById('welcomeTxt').innerText = `Dobrodošao, ${data.username}!`;
+            
+            socket.emit('login-success', data.username);
         }
 
-        // 4. ODJAVA
-        function handleLogout() {
-            localStorage.removeItem('arena_user');
-            localStorage.removeItem('arena_pass');
-            location.reload();
-        }
-    </script>
-</body>
-</html>
+        // CHAT LOGIKA
+        function posaljiPoruku() {
+            const inp = document.getElementById('msgInput');
