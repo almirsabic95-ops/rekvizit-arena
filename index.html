@@ -2,19 +2,23 @@
 <html lang="hr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rekvizit Arena - Ulaz</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .arena-box { background: #2a2a2a; padding: 30px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.5); width: 350px; text-align: center; }
-        input, select, button { width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: none; box-sizing: border-box; }
-        button { background: #f39c12; color: white; font-weight: bold; cursor: pointer; }
-        .logout-btn { background: #c0392b; margin-top: 20px; }
+        input, select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 5px; border: none; box-sizing: border-box; font-size: 1rem; }
+        input { background: #333; color: white; border: 1px solid #444; }
+        button { background: #f39c12; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #e67e22; }
+        .logout-btn { background: #c0392b; }
+        .logout-btn:hover { background: #a93226; }
         .link { color: #f39c12; cursor: pointer; font-size: 0.9rem; text-decoration: underline; margin-top: 10px; display: block; }
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         
         /* Walking Banner [cite: 2026-02-19] */
-        .marquee { overflow: hidden; white-space: nowrap; background: #333; padding: 10px; margin: 15px 0; border: 1px solid #f39c12; }
-        .marquee span { display: inline-block; padding-left: 100%; animation: marquee 10s linear infinite; color: #f39c12; font-weight: bold; }
+        .marquee { overflow: hidden; white-space: nowrap; background: #333; padding: 10px; margin: 15px 0; border: 1px solid #f39c12; position: relative; }
+        .marquee span { display: inline-block; padding-left: 100%; animation: marquee 12s linear infinite; color: #f39c12; font-weight: bold; }
         @keyframes marquee { 0% { transform: translate(0, 0); } 100% { transform: translate(-100%, 0); } }
     </style>
 </head>
@@ -22,12 +26,12 @@
 
 <div class="arena-box" id="login-container">
     <h2>Rekvizit Arena</h2>
-    <input type="text" id="username" placeholder="Nadimak" required>
-    <input type="password" id="password" placeholder="Lozinka" required>
+    <input type="text" id="username" placeholder="Nadimak" autocomplete="username">
+    <input type="password" id="password" placeholder="Lozinka" autocomplete="current-password">
     <div id="first-login-section" class="hidden">
-        <input type="text" id="secretKey" placeholder="Unesite tajnu šifru (prva prijava)">
+        <input type="text" id="secretKey" placeholder="Tajna šifra (samo prvi put)">
     </div>
-    <button id="login-btn" onclick="handleLogin()">Ulaz u Arenu</button>
+    <button type="button" id="login-btn">Ulaz u Arenu</button>
     <span class="link" onclick="toggleForms('reset-container')">Zaboravljena lozinka?</span>
 </div>
 
@@ -36,7 +40,7 @@
     <div class="marquee">
         <span>Učilica - coming soon to Rekvizit Arena! 🎓</span>
     </div>
-    <button onclick="alert('Pokretanje kviza...')">Igraj Vješala</button>
+    <button onclick="location.href='/kvizovi/vjesala'">Igraj Vješala</button>
     <button class="logout-btn" onclick="handleLogout()">Odjava</button>
 </div>
 
@@ -44,45 +48,67 @@
     <h2>Reset Lozinke</h2>
     <input type="text" id="reset-username" placeholder="Nadimak">
     <input type="text" id="reset-secret" placeholder="Tajna šifra">
-    <select id="reset-reason">
-        <option value="forgot">Zaboravljena lozinka</option>
-        <option value="hack">Sumnja na krađu profila</option>
-    </select>
     <input type="password" id="new-password" placeholder="Nova lozinka">
-    <button onclick="handleReset()">Promijeni lozinku</button>
+    <button type="button" onclick="handleReset()">Promijeni lozinku</button>
     <span class="link" onclick="toggleForms('login-container')">Povratak na login</span>
 </div>
 
 <script>
-    // Provjera sesije pri učitavanju
-    window.onload = () => {
-        const user = localStorage.getItem('arena_user');
-        if (user) showDashboard(user);
-    };
-
+    // 1. FUNKCIJA ZA LOGIN
     async function handleLogin() {
-        const userVal = document.getElementById('username').value;
-        const passVal = document.getElementById('password').value;
-        const secretVal = document.getElementById('secretKey').value;
+        const u = document.getElementById('username').value;
+        const p = document.getElementById('password').value;
+        const s = document.getElementById('secretKey').value;
 
-        const response = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: userVal, password: passVal, secretKey: secretVal || null })
-        });
+        if(!u || !p) {
+            alert("Molimo unesite nadimak i lozinku.");
+            return;
+        }
 
-        const res = await response.json();
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: u, password: p, secretKey: s || null })
+            });
 
-        if (response.status === 400 && res.firstLogin) {
-            document.getElementById('first-login-section').classList.remove('hidden');
-            alert("Prva prijava! Molimo unesite tajnu šifru za zaštitu profila.");
-        } else if (res.success) {
-            localStorage.setItem('arena_user', userVal);
-            showDashboard(userVal);
-        } else {
-            alert(res.message || "Pogreška pri prijavi");
+            const res = await response.json();
+
+            if (response.status === 400 && res.firstLogin) {
+                document.getElementById('first-login-section').classList.remove('hidden');
+                alert("Prva prijava! Unesite tajnu šifru kako biste zaštitili profil.");
+            } else if (res.success) {
+                localStorage.setItem('arena_user', u);
+                showDashboard(u);
+            } else {
+                alert(res.message || "Pogrešan nadimak ili lozinka.");
+            }
+        } catch (err) {
+            alert("Greška u komunikaciji sa serverom.");
         }
     }
+
+    // 2. OSLUŠKIVAČI ZA KLIK I ENTER
+    document.addEventListener('DOMContentLoaded', () => {
+        const loginBtn = document.getElementById('login-btn');
+        const inputs = document.querySelectorAll('#login-container input');
+
+        // Klik na gumb
+        loginBtn.addEventListener('click', handleLogin);
+
+        // Pritiskom na Enter u bilo kojem polju
+        inputs.forEach(input => {
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleLogin();
+                }
+            });
+        });
+
+        // Provjera postojeće sesije
+        const savedUser = localStorage.getItem('arena_user');
+        if (savedUser) showDashboard(savedUser);
+    });
 
     function showDashboard(username) {
         document.getElementById('login-container').classList.add('hidden');
@@ -99,25 +125,22 @@
     function toggleForms(targetId) {
         document.getElementById('login-container').classList.add('hidden');
         document.getElementById('reset-container').classList.add('hidden');
-        document.getElementById('dashboard-container').classList.add('hidden');
         document.getElementById(targetId).classList.remove('hidden');
     }
 
     async function handleReset() {
-        const data = {
-            username: document.getElementById('reset-username').value,
-            secretKey: document.getElementById('reset-secret').value,
-            newPassword: document.getElementById('new-password').value
-        };
+        const u = document.getElementById('reset-username').value;
+        const s = document.getElementById('reset-secret').value;
+        const n = document.getElementById('new-password').value;
 
         const response = await fetch('/api/reset-password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+            body: JSON.stringify({ username: u, secretKey: s, newPassword: n })
         });
 
         const res = await response.json();
-        alert(res.message || "Zahtjev poslan");
+        alert(res.message);
         if (res.success) toggleForms('login-container');
     }
 </script>
