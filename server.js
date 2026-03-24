@@ -11,26 +11,25 @@ const io = new Server(server);
 app.use(express.json());
 app.use(express.static(__dirname));
 
-// POVEZIVANJE NA BAZU
 const dbURI = "mongodb+srv://rekvizit:arenakviz@rekvizit.o6ugw5r.mongodb.net/RekvizitArena?retryWrites=true&w=majority&appName=Rekvizit";
 
 mongoose.connect(dbURI)
     .then(() => console.log('✅ Arena povezana'))
     .catch(err => console.log('❌ Greška baze:', err));
 
-// --- 1. KORAK: DEFINICIJA MODELA (MORA BITI PRIJE KVIZOVA) ---
+// --- 1. DEFINICIJA MODELA ---
 const UserSchema = new mongoose.Schema({
     username: { type: String, unique: true, required: true },
     password: { type: String, required: true },
     secretKey: { type: String, required: true },
     coins: { type: Number, default: 0 },
-    loginStreak: { type: Number, default: 0 },
+    loginStreak: { type: Number, default: 1 },
     lastLogin: { type: Date, default: Date.now },
     stats: { type: Object, default: {} }
 });
 const User = mongoose.model('User', UserSchema);
 
-// --- 2. KORAK: UCITAVANJE KVIZOVA ---
+// --- 2. UCITAVANJE KVIZA ---
 const vjesala = require('./kvizovi/vjesala');
 vjesala.inicijalizirajVjesala(io);
 
@@ -41,13 +40,6 @@ io.on('connection', (socket) => {
         socket.username = username;
         onlineUsers[username] = { status: 'online', id: socket.id };
         io.emit('update-online-list', onlineUsers);
-    });
-
-    socket.on('change-status', (status) => {
-        if (onlineUsers[socket.username]) {
-            onlineUsers[socket.username].status = status;
-            io.emit('update-online-list', onlineUsers);
-        }
     });
 
     socket.on('send-msg', (text) => {
@@ -64,11 +56,11 @@ io.on('connection', (socket) => {
     });
 });
 
-// RUTE
 app.get('/kvizovi/vjesala', (req, res) => {
     res.sendFile(path.join(__dirname, 'kvizovi', 'vjesala.html'));
 });
 
+// LOGIN RUTA SA STREAK POPRAVKOM
 app.post('/api/login', async (req, res) => {
     const { username, password, secretKey, coupon } = req.body;
     try {
@@ -84,7 +76,7 @@ app.post('/api/login', async (req, res) => {
                 coins: pocetnoZlato, loginStreak: 1, lastLogin: new Date() 
             });
             await user.save();
-            return res.json({ success: true, coins: user.coins, streak: user.loginStreak });
+            return res.json({ success: true, coins: user.coins, streak: 1, username: user.username });
         }
 
         if (user.password === password) {
@@ -94,9 +86,7 @@ app.post('/api/login', async (req, res) => {
             const zadnjiPocetak = new Date(zadnjaPrijava.getFullYear(), zadnjaPrijava.getMonth(), zadnjaPrijava.getDate()).getTime();
 
             if (danasPocetak > zadnjiPocetak) {
-                const milisekundiRazlike = danasPocetak - zadnjiPocetak;
-                const daniRazlike = milisekundiRazlike / (1000 * 60 * 60 * 24);
-
+                const daniRazlike = (danasPocetak - zadnjiPocetak) / (1000 * 60 * 60 * 24);
                 if (daniRazlike === 1) {
                     user.loginStreak = (user.loginStreak >= 7) ? 1 : user.loginStreak + 1;
                 } else {
@@ -107,18 +97,18 @@ app.post('/api/login', async (req, res) => {
                 await user.save();
             }
 
-            res.json({ success: true, coins: user.coins, streak: user.loginStreak });
+            res.json({ 
+                success: true, 
+                coins: user.coins, 
+                streak: user.loginStreak || 1, 
+                username: user.username 
+            });
         } else {
             res.status(401).json({ success: false, message: "Netočna lozinka!" });
         }
     } catch (err) {
         res.status(500).json({ success: false });
     }
-});
-
-app.get('/api/user-stats/:username', async (req, res) => {
-    const user = await User.findOne({ username: req.params.username }, 'username coins stats loginStreak');
-    user ? res.json(user) : res.status(404).send();
 });
 
 const PORT = process.env.PORT || 3000;
