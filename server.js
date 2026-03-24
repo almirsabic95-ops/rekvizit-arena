@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname)));
 
 // Povezivanje na MongoDB
 mongoose.connect('mongodb://localhost:27017/rekvizit_arena')
