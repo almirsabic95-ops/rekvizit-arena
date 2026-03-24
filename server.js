@@ -1,7 +1,6 @@
 const express = require('express');
 const http = require('http');
 const mongoose = require('mongoose');
-const path = require('path');
 const { Server } = require('socket.io');
 
 const app = express();
@@ -22,7 +21,7 @@ const UserSchema = new mongoose.Schema({
     password: { type: String, required: true },
     secretKey: { type: String, required: true },
     coins: { type: Number, default: 0 },
-    loginStreak: { type: Number, default: 1 },
+    loginStreak: { type: Number, default: 0 },
     lastLogin: { type: Date, default: Date.now },
     stats: { type: Object, default: {} }
 });
@@ -36,20 +35,15 @@ io.on('connection', (socket) => {
         onlineUsers[username] = { status: 'online', id: socket.id };
         io.emit('update-online-list', onlineUsers);
     });
-
     socket.on('change-status', (status) => {
         if (onlineUsers[socket.username]) {
             onlineUsers[socket.username].status = status;
             io.emit('update-online-list', onlineUsers);
         }
     });
-
     socket.on('send-msg', (text) => {
-        if (socket.username) {
-            io.emit('receive-msg', { user: socket.username, text });
-        }
+        if (socket.username) io.emit('receive-msg', { user: socket.username, text });
     });
-
     socket.on('disconnect', () => {
         if (socket.username) {
             delete onlineUsers[socket.username];
@@ -66,29 +60,45 @@ app.post('/api/login', async (req, res) => {
         // REGISTRACIJA
         if (!user) {
             if (!secretKey) return res.status(400).json({ firstLogin: true });
-            
-            let pocetnoZlato = 10; // Nagrada za prvi dan (Niz 1)
+            let pocetnoZlato = 10; 
             if (coupon && coupon.trim().length > 0) pocetnoZlato += 50; 
 
-            user = new User({ username, password, secretKey, coins: pocetnoZlato, loginStreak: 1 });
+            user = new User({ 
+                username, password, secretKey, 
+                coins: pocetnoZlato, loginStreak: 1, lastLogin: new Date() 
+            });
             await user.save();
             return res.json({ success: true, coins: user.coins, streak: user.loginStreak, stats: user.stats });
         }
 
-        // PRIJAVA
+        // PRIJAVA (ADMIN I OSTALI)
         if (user.password === password) {
-            const danas = new Date().toDateString();
-            const zadnji = new Date(user.lastLogin).toDateString();
+            const sada = new Date();
+            const danasPocetak = new Date(sada.getFullYear(), sada.getMonth(), sada.getDate()).getTime();
+            const zadnjaPrijava = new Date(user.lastLogin);
+            const zadnjiPocetak = new Date(zadnjaPrijava.getFullYear(), zadnjaPrijava.getMonth(), zadnjaPrijava.getDate()).getTime();
 
-            if (danas !== zadnji) {
-                // Ako je prošlo manje od 48 sati, nastavi niz, inače resetiraj
-                user.loginStreak = (new Date() - new Date(user.lastLogin) < 86400000 * 2) ? user.loginStreak + 1 : 1;
-                if (user.loginStreak > 7) user.loginStreak = 1;
-                
+            if (danasPocetak > zadnjiPocetak) {
+                const milisekundiRazlike = danasPocetak - zadnjiPocetak;
+                const daniRazlike = milisekundiRazlike / (1000 * 60 * 60 * 24);
+
+                if (daniRazlike === 1) {
+                    user.loginStreak = (user.loginStreak >= 7) ? 1 : user.loginStreak + 1;
+                } else {
+                    user.loginStreak = 1; 
+                }
                 user.coins += (user.loginStreak * 10);
-                user.lastLogin = Date.now();
+                user.lastLogin = sada;
                 await user.save();
             }
+
+            // Popravak ako je netko ostao na 0
+            if (user.loginStreak === 0) {
+                user.loginStreak = 1;
+                user.coins += 10;
+                await user.save();
+            }
+
             res.json({ success: true, coins: user.coins, streak: user.loginStreak, stats: user.stats });
         } else {
             res.status(401).json({ success: false, message: "Netočna lozinka!" });
