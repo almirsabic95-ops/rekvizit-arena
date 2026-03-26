@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const User = mongoose.model('User');
 
-const backupRijeci = ["PROGRAMIRANJE", "REKVIZIT", "ARENA", "TEHNOLOGIJA", "SERVER"];
+const backupRijeci = ["PROGRAMIRANJE", "REKVIZIT", "ARENA", "TEHNOLOGIJA", "SERVER", "ZLATNIK", "POBJEDA"];
 let trenutnaRijec = "";
 let prikazRijeci = [];
 let lokalnaBazaRijeci = [];
@@ -11,20 +11,30 @@ async function ucitajBazuRijeci() {
         console.log("⏳ Preuzimanje rječnika s GitHub-a...");
         const response = await fetch('https://raw.githubusercontent.com/com-li-re/croatian-dictionary/master/dictionary.txt');
         const text = await response.text();
-        lokalnaBazaRijeci = text.split('\n')
+        
+        const filtrirane = text.split('\n')
             .map(w => w.trim().toUpperCase())
             .filter(w => w.length > 3 && w.length < 12 && /^[A-ZČĆŽŠĐ]+$/.test(w));
-        console.log(`✅ Rječnik spreman (${lokalnaBazaRijeci.length} riječi).`);
+        
+        if (filtrirane.length > 0) {
+            lokalnaBazaRijeci = filtrirane;
+            console.log(`✅ Rječnik spreman (${lokalnaBazaRijeci.length} riječi).`);
+        } else {
+            throw new Error("Prazan rječnik");
+        }
     } catch (e) {
-        console.log("⚠️ Greška rječnika, koristim backup.");
+        console.log("⚠️ Greška rječnika ili nema interneta, koristim backup.");
         lokalnaBazaRijeci = backupRijeci;
     }
 }
 
 async function novaRunda(io) {
     if (lokalnaBazaRijeci.length === 0) await ucitajBazuRijeci();
-    trenutnaRijec = lokalnaBazaRijeci[Math.floor(Math.random() * lokalnaBazaRijeci.length)];
+    
+    // Osiguranje da trenutnaRijec nikada ne bude undefined
+    trenutnaRijec = lokalnaBazaRijeci[Math.floor(Math.random() * lokalnaBazaRijeci.length)] || "ARENA";
     prikazRijeci = trenutnaRijec.split('').map(() => "_");
+    
     io.emit('vjesala-nova-runda', { prikaz: prikazRijeci.join(' ') });
 }
 
@@ -38,7 +48,7 @@ async function inicijalizirajVjesala(io) {
         });
 
         socket.on('vjesala-pokusaj', async (data) => {
-            if (!socket.username) return;
+            if (!socket.username || !trenutnaRijec) return;
             const pokusaj = data.input.toUpperCase().trim();
             const user = await User.findOne({ username: socket.username });
             
@@ -46,7 +56,6 @@ async function inicijalizirajVjesala(io) {
             if (!user.stats.vjesala) user.stats.vjesala = { level: 0, solved: 0 };
 
             let pogodak = false;
-
             if (pokusaj === trenutnaRijec) {
                 prikazRijeci = trenutnaRijec.split('');
                 pogodak = true;

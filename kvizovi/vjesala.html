@@ -10,74 +10,32 @@
         body { font-family: 'Segoe UI', sans-serif; background: var(--tamna); color: white; text-align: center; padding: 20px; margin: 0; }
         
         .game-card { 
-            background: #161b2a; 
-            max-width: 600px; 
-            margin: 40px auto; 
-            padding: 30px; 
-            border-radius: 20px; 
-            border: 2px solid var(--glavna); 
+            background: #161b2a; max-width: 600px; margin: 40px auto; padding: 30px; 
+            border-radius: 20px; border: 2px solid var(--glavna); 
             box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
         }
 
-        /* V-STATISTIKA S LOGOM */
         .vjesala-stats { 
-            display: flex; 
-            justify-content: space-around; 
-            background: rgba(0,0,0,0.3); 
-            padding: 15px; 
-            border-radius: 12px; 
-            margin-bottom: 25px; 
-            border: 1px dashed var(--glavna);
+            display: flex; justify-content: space-around; background: rgba(0,0,0,0.3); 
+            padding: 15px; border-radius: 12px; margin-bottom: 25px; border: 1px dashed var(--glavna);
         }
         .stat-item { display: flex; align-items: center; gap: 10px; font-weight: bold; }
         .v-logo { font-size: 1.6rem; filter: drop-shadow(0 0 5px var(--glavna)); }
 
         .word-display { 
-            font-size: 40px; 
-            letter-spacing: 12px; 
-            margin: 30px 0; 
-            color: var(--glavna); 
-            font-family: 'Courier New', monospace; 
-            font-weight: bold;
+            font-size: 40px; letter-spacing: 12px; margin: 30px 0; color: var(--glavna); 
+            font-family: 'Courier New', monospace; font-weight: bold;
         }
 
-        .input-group { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
-        input { 
-            padding: 15px; 
-            background: #0b0f19; 
-            border: 1px solid #2d3748; 
-            color: white; 
-            border-radius: 8px; 
-            width: 180px; 
-            text-align: center;
-            font-size: 1.1rem;
-        }
-        button { 
-            padding: 15px 30px; 
-            background: var(--glavna); 
-            color: black; 
-            border: none; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            font-weight: bold;
-            transition: 0.3s;
-        }
-        button:hover { background: #00b4db; transform: scale(1.05); }
+        .input-group { display: flex; gap: 10px; justify-content: center; }
+        input { padding: 15px; background: #0b0f19; border: 1px solid #2d3748; color: white; border-radius: 8px; width: 180px; text-align: center; }
+        button { padding: 15px 30px; background: var(--glavna); color: black; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
 
         #logs { 
-            background: rgba(0,0,0,0.5); 
-            height: 150px; 
-            overflow-y: auto; 
-            margin-top: 30px; 
-            padding: 15px; 
-            text-align: left; 
-            font-size: 0.85rem; 
-            border-radius: 10px;
-            border: 1px solid #2d3748;
+            background: rgba(0,0,0,0.5); height: 150px; overflow-y: auto; margin-top: 30px; 
+            padding: 15px; text-align: left; font-size: 0.85rem; border-radius: 10px; border: 1px solid #2d3748;
         }
-        .log-entry { margin-bottom: 5px; border-bottom: 1px solid #222; padding-bottom: 3px; }
-        
-        .nav-back { position: absolute; top: 20px; left: 20px; color: var(--glavna); text-decoration: none; font-weight: bold; font-size: 0.9rem; }
+        .nav-back { position: absolute; top: 20px; left: 20px; color: var(--glavna); text-decoration: none; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -87,14 +45,8 @@
         <h1 style="color: var(--glavna); margin-top: 0;">🪢 VJEŠALA</h1>
         
         <div class="vjesala-stats">
-            <div class="stat-item">
-                <span class="v-logo">🪢</span> 
-                <span>LEVEL: <span id="v-lvl" style="color: var(--glavna);">0</span></span>
-            </div>
-            <div class="stat-item">
-                <span class="v-logo">🪢</span> 
-                <span>RIJEČI: <span id="v-sol" style="color: var(--glavna);">0</span></span>
-            </div>
+            <div class="stat-item"><span class="v-logo">🪢</span><span>LEVEL: <span id="v-lvl">0</span></span></div>
+            <div class="stat-item"><span class="v-logo">🪢</span><span>RIJEČI: <span id="v-sol">0</span></span></div>
         </div>
 
         <div class="word-display" id="display">_ _ _ _ _</div>
@@ -112,40 +64,32 @@
         const korisnik = localStorage.getItem('arena_user');
 
         if(!korisnik) window.location.href = "/";
-        
         socket.emit('login-success', korisnik);
         socket.emit('vjesala-trazi-stanje');
 
         function posalji() {
             const el = document.getElementById('input');
-            if(el.value.trim()) {
-                socket.emit('vjesala-pokusaj', { input: el.value.trim() });
-                el.value = "";
-                el.focus();
-            }
+            if(el.value.trim()) { socket.emit('vjesala-pokusaj', { input: el.value.trim() }); el.value = ""; }
         }
 
         socket.on('vjesala-nova-runda', (data) => {
             document.getElementById('display').innerText = data.prikaz;
-            dodajLog("<span style='color: #2ecc71;'>--- Nova runda je počela! ---</span>");
-        });
-
-        socket.on('vjesala-update', (data) => {
-            document.getElementById('display').innerText = data.prikaz;
-        });
-
-        socket.on('vjesala-poruka', (data) => {
-            dodajLog(data.text);
             if(data.stats) {
                 document.getElementById('v-lvl').innerText = data.stats.level;
                 document.getElementById('v-sol').innerText = data.stats.solved;
             }
         });
 
-        function dodajLog(html) {
+        socket.on('vjesala-update', (data) => { document.getElementById('display').innerText = data.prikaz; });
+
+        socket.on('vjesala-poruka', (data) => {
             const logs = document.getElementById('logs');
-            logs.innerHTML = `<div class="log-entry">${html}</div>` + logs.innerHTML;
-        }
+            logs.innerHTML = `<div>${data.text}</div>` + logs.innerHTML;
+            if(data.stats) {
+                document.getElementById('v-lvl').innerText = data.stats.level;
+                document.getElementById('v-sol').innerText = data.stats.solved;
+            }
+        });
     </script>
 </body>
 </html>

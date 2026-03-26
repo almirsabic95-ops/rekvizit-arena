@@ -23,7 +23,7 @@
             overflow: hidden;
         }
 
-        /* POPRAVAK: display: none sprječava bljeskanje login ekrana */
+        /* POPRAVAK BLJESKANJA */
         #login-screen {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -80,7 +80,6 @@
             flex-direction: row;
         }
 
-        /* SIDEBAR / CHAT */
         .sidebar {
             width: 300px;
             background: var(--card);
@@ -101,10 +100,9 @@
             border: 1px solid #2d3748;
         }
 
-        .chat-line { margin-bottom: 8px; line-height: 1.4; }
+        .chat-line { margin-bottom: 8px; }
         .chat-name { color: var(--accent); font-weight: bold; }
 
-        /* MAIN CONTENT */
         .main-view {
             flex: 1;
             padding: 40px;
@@ -135,7 +133,6 @@
         .stat-box small { color: #a0aec0; display: block; margin-bottom: 5px; text-transform: uppercase; font-size: 0.7rem; }
         .stat-box span { font-size: 1.8rem; font-weight: bold; color: var(--accent); }
 
-        /* GRID I LEADERBOARD */
         .content-layout {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -180,7 +177,7 @@
             <input type="text" id="userInput" placeholder="Korisničko ime">
             <input type="password" id="passInput" placeholder="Lozinka">
             <div id="firstTimeFields" style="display: none;">
-                <input type="text" id="secretInput" placeholder="Tajni ključ (prva prijava)">
+                <input type="text" id="secretInput" placeholder="Tajni ključ">
             </div>
             <button class="main-btn" onclick="obaviPrijavu()">UĐI U ARENU</button>
             <p id="errorMsg" style="color: #ff4b4b; margin-top: 15px; font-size: 0.8rem;"></p>
@@ -192,38 +189,29 @@
             <h2 style="color: var(--accent); margin-top: 0;">Lobby Chat</h2>
             <div id="chat-container"></div>
             <input type="text" id="msgInput" placeholder="Napiši poruku..." onkeypress="if(event.key==='Enter') posaljiPoruku()">
-            <button onclick="odjaviMe()" style="margin-top:20px; color:#ff4b4b; background:none; border:1px solid #ff4b4b; padding:8px; border-radius:5px; cursor:pointer; font-size: 0.8rem;">ODJAVI SE</button>
+            <button onclick="localStorage.clear(); location.reload();" style="margin-top:20px; color:#ff4b4b; background:none; border:1px solid #ff4b4b; padding:8px; border-radius:5px; cursor:pointer;">ODJAVA</button>
         </div>
 
         <div class="main-view">
-            <h1 id="welcomeTxt" style="margin-bottom: 30px;">Dobrodošao!</h1>
+            <h1 id="welcomeTxt">Dobrodošao!</h1>
             
             <div class="stats-row">
-                <div class="stat-box">
-                    <small>Dnevni Niz</small>
-                    <span id="user-streak">0</span>
-                </div>
-                <div class="stat-box">
-                    <small>Profil Level</small>
-                    <span id="user-level">0</span>
-                </div>
+                <div class="stat-box"><small>Dnevni Niz</small><span id="user-streak">0</span></div>
+                <div class="stat-box"><small>Profil Level</small><span id="user-level">0</span></div>
             </div>
 
             <div class="content-layout">
                 <a href="/kvizovi/vjesala" class="game-link">
                     <div style="font-size: 4rem; margin-bottom: 15px;">🪢</div>
                     <h3>VJEŠALA</h3>
-                    <p style="color: #a0aec0; font-size: 0.8rem;">Pogodi riječ i osvoji V-Levele</p>
+                    <p style="color: #a0aec0; font-size: 0.8rem;">Igraj i osvoji V-Levele</p>
                 </a>
 
                 <div class="leaderboard-card">
-                    <h3>🏆 Top V-Level (Vješala)</h3>
+                    <h3>🏆 Top V-Level</h3>
                     <table>
-                        <thead>
-                            <tr><th>IGRAČ</th><th>LEVEL</th><th>RIJEČI</th></tr>
-                        </thead>
-                        <tbody id="l-body">
-                            </tbody>
+                        <thead><tr><th>IGRAČ</th><th>LEVEL</th><th>RIJEČI</th></tr></thead>
+                        <tbody id="l-body"></tbody>
                     </table>
                 </div>
             </div>
@@ -233,23 +221,15 @@
     <script>
         const socket = io();
 
-        // AUTOMATSKA PROVJERA LOGINA
         window.addEventListener('load', () => {
-            const u = localStorage.getItem('arena_user');
-            const p = localStorage.getItem('arena_pass');
-            if (u && p) {
-                izvrsiLoginAPI(u, p);
-            } else {
-                document.getElementById('login-screen').style.display = 'flex';
-            }
+            const u = localStorage.getItem('arena_user'), p = localStorage.getItem('arena_pass');
+            if (u && p) izvrsiLoginAPI(u, p);
+            else document.getElementById('login-screen').style.display = 'flex';
             ucitajLeaderboard();
         });
 
         async function obaviPrijavu() {
-            const u = document.getElementById('userInput').value;
-            const p = document.getElementById('passInput').value;
-            const s = document.getElementById('secretInput').value;
-            izvrsiLoginAPI(u, p, s);
+            izvrsiLoginAPI(document.getElementById('userInput').value, document.getElementById('passInput').value, document.getElementById('secretInput').value);
         }
 
         async function izvrsiLoginAPI(u, p, s="") {
@@ -260,52 +240,32 @@
                     body: JSON.stringify({ username: u, password: p, secretKey: s })
                 });
                 const data = await res.json();
-
                 if (data.success) {
-                    localStorage.setItem('arena_user', u);
-                    localStorage.setItem('arena_pass', p);
-                    prikaziLobbyUI(data);
+                    localStorage.setItem('arena_user', u); localStorage.setItem('arena_pass', p);
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('arena-screen').style.display = 'flex';
+                    document.getElementById('user-level').innerText = data.level;
+                    document.getElementById('user-streak').innerText = data.streak;
+                    document.getElementById('welcomeTxt').innerText = `Dobrodošao, ${data.username}!`;
+                    socket.emit('login-success', data.username);
                 } else if (data.firstLogin) {
                     document.getElementById('login-screen').style.display = 'flex';
                     document.getElementById('firstTimeFields').style.display = 'block';
-                    document.getElementById('errorMsg').innerText = "Prva prijava: Unesite tajni ključ.";
-                } else {
-                    document.getElementById('login-screen').style.display = 'flex';
-                    document.getElementById('errorMsg').innerText = data.message || "Pogrešni podaci.";
                 }
             } catch (err) { console.error(err); }
         }
 
-        function prikaziLobbyUI(data) {
-            document.getElementById('login-screen').style.display = 'none';
-            document.getElementById('arena-screen').style.display = 'flex';
-            document.getElementById('user-level').innerText = data.level || 0;
-            document.getElementById('user-streak').innerText = data.streak || 1;
-            document.getElementById('welcomeTxt').innerText = `Dobrodošao, ${data.username}!`;
-            socket.emit('login-success', data.username);
-        }
-
         async function ucitajLeaderboard() {
-            try {
-                const res = await fetch('/api/leaderboard');
-                const data = await res.json();
-                const body = document.getElementById('l-body');
-                body.innerHTML = data.map((u, i) => `
-                    <tr>
-                        <td class="${i===0?'rank-1':''}">${u.name}</td>
-                        <td><b>${u.lvl}</b></td>
-                        <td>${u.solved}</td>
-                    </tr>
-                `).join('');
-            } catch (e) { console.error(e); }
+            const res = await fetch('/api/leaderboard');
+            const data = await res.json();
+            document.getElementById('l-body').innerHTML = data.map((u, i) => `
+                <tr><td class="${i===0?'rank-1':''}">${u.name}</td><td><b>${u.lvl}</b></td><td>${u.solved}</td></tr>
+            `).join('');
         }
 
         function posaljiPoruku() {
             const inp = document.getElementById('msgInput');
-            if (inp.value.trim()) {
-                socket.emit('send-msg', inp.value);
-                inp.value = '';
-            }
+            if (inp.value.trim()) { socket.emit('send-msg', inp.value); inp.value = ''; }
         }
 
         socket.on('receive-msg', (data) => {
@@ -313,11 +273,6 @@
             chat.innerHTML += `<div class="chat-line"><span class="chat-name">${data.user}:</span> ${data.text}</div>`;
             chat.scrollTop = chat.scrollHeight;
         });
-
-        function odjaviMe() {
-            localStorage.clear();
-            location.reload();
-        }
     </script>
 </body>
 </html>
