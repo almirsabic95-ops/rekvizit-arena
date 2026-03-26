@@ -17,15 +17,15 @@ mongoose.connect(dbURI)
     .then(() => console.log('✅ Arena povezana'))
     .catch(err => console.log('❌ Greška baze:', err));
 
-// --- 1. DEFINICIJA MODELA ---
+// --- 1. DEFINICIJA MODELA (Izmijenjeno za Level sustav) ---
 const UserSchema = new mongoose.Schema({
     username: { type: String, unique: true, required: true },
     password: { type: String, required: true },
     secretKey: { type: String, required: true },
-    coins: { type: Number, default: 0 },
+    level: { type: Number, default: 0 },         // Počinješ od levela 0
+    solvedWords: { type: Number, default: 0 },   // Brojač pogođenih riječi
     loginStreak: { type: Number, default: 1 },
-    lastLogin: { type: Date, default: Date.now },
-    stats: { type: Object, default: {} }
+    lastLogin: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', UserSchema);
 
@@ -60,47 +60,28 @@ app.get('/kvizovi/vjesala', (req, res) => {
     res.sendFile(path.join(__dirname, 'kvizovi', 'vjesala.html'));
 });
 
-// LOGIN RUTA SA STREAK POPRAVKOM
+// LOGIN RUTA (Popravljena za Level sustav)
 app.post('/api/login', async (req, res) => {
-    const { username, password, secretKey, coupon } = req.body;
+    const { username, password, secretKey } = req.body;
     try {
         let user = await User.findOne({ username });
 
         if (!user) {
             if (!secretKey) return res.status(400).json({ firstLogin: true });
-            let pocetnoZlato = 10; 
-            if (coupon && coupon.trim().length > 0) pocetnoZlato += 50; 
-
             user = new User({ 
                 username, password, secretKey, 
-                coins: pocetnoZlato, loginStreak: 1, lastLogin: new Date() 
+                level: 0, solvedWords: 0, 
+                lastLogin: new Date() 
             });
             await user.save();
-            return res.json({ success: true, coins: user.coins, streak: 1, username: user.username });
+            return res.json({ success: true, level: 0, solved: 0, username: user.username });
         }
 
         if (user.password === password) {
-            const sada = new Date();
-            const danasPocetak = new Date(sada.getFullYear(), sada.getMonth(), sada.getDate()).getTime();
-            const zadnjaPrijava = new Date(user.lastLogin);
-            const zadnjiPocetak = new Date(zadnjaPrijava.getFullYear(), zadnjaPrijava.getMonth(), zadnjaPrijava.getDate()).getTime();
-
-            if (danasPocetak > zadnjiPocetak) {
-                const daniRazlike = (danasPocetak - zadnjiPocetak) / (1000 * 60 * 60 * 24);
-                if (daniRazlike === 1) {
-                    user.loginStreak = (user.loginStreak >= 7) ? 1 : user.loginStreak + 1;
-                } else {
-                    user.loginStreak = 1; 
-                }
-                user.coins += (user.loginStreak * 10);
-                user.lastLogin = sada;
-                await user.save();
-            }
-
             res.json({ 
                 success: true, 
-                coins: user.coins, 
-                streak: user.loginStreak || 1, 
+                level: user.level, 
+                solved: user.solvedWords,
                 username: user.username 
             });
         } else {
