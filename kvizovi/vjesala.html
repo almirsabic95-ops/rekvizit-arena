@@ -6,30 +6,101 @@
     <title>Vješala - Rekvizit Arena</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { --glavna: #3498db; --tamna: #121212; }
+        :root { --glavna: #00d4ff; --tamna: #0b0f19; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--tamna); color: white; text-align: center; padding: 20px; margin: 0; }
-        .game-card { background: #1e1e1e; max-width: 600px; margin: 40px auto; padding: 25px; border-radius: 15px; border: 2px solid var(--glavna); box-shadow: 0 0 30px rgba(0,0,0,0.5); }
-        .word-display { font-size: clamp(30px, 8vw, 45px); letter-spacing: 8px; margin: 25px 0; font-family: 'Courier New', monospace; color: var(--glavna); font-weight: bold; overflow-wrap: break-word; }
-        .input-group { display: flex; flex-direction: column; gap: 10px; align-items: center; }
-        input { padding: 15px; width: 90%; max-width: 300px; background: #333; border: 1px solid #444; color: white; border-radius: 5px; font-size: 18px; text-align: center; }
-        button { padding: 15px 40px; background: var(--glavna); color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 18px; width: 90%; max-width: 300px; }
-        #logs { background: #111; height: 200px; overflow-y: auto; margin-top: 25px; padding: 15px; border-radius: 5px; text-align: left; font-size: 14px; border-left: 4px solid var(--glavna); line-height: 1.6; }
-        .r-coin { display: inline-block; width: 14px; height: 14px; background: gold; border-radius: 50%; border: 1px solid #b8860b; vertical-align: middle; }
-        .nav-back { position: absolute; top: 15px; left: 15px; color: var(--glavna); text-decoration: none; font-weight: bold; font-size: 14px; }
-        @media (min-width: 600px) { .input-group { flex-direction: row; justify-content: center; } button { width: auto; } }
+        
+        .game-card { 
+            background: #161b2a; 
+            max-width: 600px; 
+            margin: 40px auto; 
+            padding: 30px; 
+            border-radius: 20px; 
+            border: 2px solid var(--glavna); 
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
+        }
+
+        /* V-STATISTIKA S LOGOM */
+        .vjesala-stats { 
+            display: flex; 
+            justify-content: space-around; 
+            background: rgba(0,0,0,0.3); 
+            padding: 15px; 
+            border-radius: 12px; 
+            margin-bottom: 25px; 
+            border: 1px dashed var(--glavna);
+        }
+        .stat-item { display: flex; align-items: center; gap: 10px; font-weight: bold; }
+        .v-logo { font-size: 1.6rem; filter: drop-shadow(0 0 5px var(--glavna)); }
+
+        .word-display { 
+            font-size: 40px; 
+            letter-spacing: 12px; 
+            margin: 30px 0; 
+            color: var(--glavna); 
+            font-family: 'Courier New', monospace; 
+            font-weight: bold;
+        }
+
+        .input-group { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+        input { 
+            padding: 15px; 
+            background: #0b0f19; 
+            border: 1px solid #2d3748; 
+            color: white; 
+            border-radius: 8px; 
+            width: 180px; 
+            text-align: center;
+            font-size: 1.1rem;
+        }
+        button { 
+            padding: 15px 30px; 
+            background: var(--glavna); 
+            color: black; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: bold;
+            transition: 0.3s;
+        }
+        button:hover { background: #00b4db; transform: scale(1.05); }
+
+        #logs { 
+            background: rgba(0,0,0,0.5); 
+            height: 150px; 
+            overflow-y: auto; 
+            margin-top: 30px; 
+            padding: 15px; 
+            text-align: left; 
+            font-size: 0.85rem; 
+            border-radius: 10px;
+            border: 1px solid #2d3748;
+        }
+        .log-entry { margin-bottom: 5px; border-bottom: 1px solid #222; padding-bottom: 3px; }
+        
+        .nav-back { position: absolute; top: 20px; left: 20px; color: var(--glavna); text-decoration: none; font-weight: bold; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <a href="/" class="nav-back">⬅ NATRAG U LOBBY</a>
+    <a href="/" class="nav-back">⬅ POVRATAK U LOBBY</a>
 
     <div class="game-card">
-        <h2 style="color: var(--glavna); margin-top: 0;">Vješala Arena</h2>
-        <p>Slovo (+1 <span class="r-coin"></span>) | Riječ (+10 <span class="r-coin"></span>)</p>
+        <h1 style="color: var(--glavna); margin-top: 0;">🪢 VJEŠALA</h1>
         
+        <div class="vjesala-stats">
+            <div class="stat-item">
+                <span class="v-logo">🪢</span> 
+                <span>LEVEL: <span id="v-lvl" style="color: var(--glavna);">0</span></span>
+            </div>
+            <div class="stat-item">
+                <span class="v-logo">🪢</span> 
+                <span>RIJEČI: <span id="v-sol" style="color: var(--glavna);">0</span></span>
+            </div>
+        </div>
+
         <div class="word-display" id="display">_ _ _ _ _</div>
         
         <div class="input-group">
-            <input type="text" id="input" maxlength="20" placeholder="Upiši slovo ili riječ..." autocomplete="off" onkeypress="if(event.key==='Enter') posalji()">
+            <input type="text" id="input" placeholder="Slovo ili riječ..." onkeypress="if(event.key==='Enter') posalji()">
             <button onclick="posalji()">POŠALJI</button>
         </div>
         
@@ -47,9 +118,8 @@
 
         function posalji() {
             const el = document.getElementById('input');
-            const val = el.value.trim();
-            if(val !== "") {
-                socket.emit('vjesala-pokusaj', { input: val });
+            if(el.value.trim()) {
+                socket.emit('vjesala-pokusaj', { input: el.value.trim() });
                 el.value = "";
                 el.focus();
             }
@@ -62,17 +132,19 @@
 
         socket.on('vjesala-update', (data) => {
             document.getElementById('display').innerText = data.prikaz;
-            dodajLog(`🔹 <b>${data.user}</b> je pogodio slovo <b>${data.slovo}</b>!`);
         });
 
-        socket.on('vjesala-poruka', (data) => dodajLog(data.text));
+        socket.on('vjesala-poruka', (data) => {
+            dodajLog(data.text);
+            if(data.stats) {
+                document.getElementById('v-lvl').innerText = data.stats.level;
+                document.getElementById('v-sol').innerText = data.stats.solved;
+            }
+        });
 
-        function dodajLog(msg) {
-            const l = document.getElementById('logs');
-            const div = document.createElement('div');
-            div.style.marginBottom = "5px";
-            div.innerHTML = msg;
-            l.prepend(div);
+        function dodajLog(html) {
+            const logs = document.getElementById('logs');
+            logs.innerHTML = `<div class="log-entry">${html}</div>` + logs.innerHTML;
         }
     </script>
 </body>

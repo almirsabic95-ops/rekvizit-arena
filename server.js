@@ -17,79 +17,70 @@ mongoose.connect(dbURI)
     .then(() => console.log('✅ Arena povezana'))
     .catch(err => console.log('❌ Greška baze:', err));
 
-// --- 1. DEFINICIJA MODELA (Izmijenjeno za Level sustav) ---
 const UserSchema = new mongoose.Schema({
     username: { type: String, unique: true, required: true },
     password: { type: String, required: true },
     secretKey: { type: String, required: true },
-    level: { type: Number, default: 0 },         // Počinješ od levela 0
-    solvedWords: { type: Number, default: 0 },   // Brojač pogođenih riječi
+    level: { type: Number, default: 0 },
     loginStreak: { type: Number, default: 1 },
-    lastLogin: { type: Date, default: Date.now }
+    lastLogin: { type: Date, default: Date.now },
+    stats: { 
+        type: Object, 
+        default: { vjesala: { level: 0, solved: 0 } } 
+    }
 });
 const User = mongoose.model('User', UserSchema);
 
-// --- 2. UCITAVANJE KVIZA ---
 const vjesala = require('./kvizovi/vjesala');
 vjesala.inicijalizirajVjesala(io);
 
-let onlineUsers = {};
-
-io.on('connection', (socket) => {
-    socket.on('login-success', (username) => {
-        socket.username = username;
-        onlineUsers[username] = { status: 'online', id: socket.id };
-        io.emit('update-online-list', onlineUsers);
-    });
-
-    socket.on('send-msg', (text) => {
-        if (socket.username) {
-            io.emit('receive-msg', { user: socket.username, text });
-        }
-    });
-
-    socket.on('disconnect', () => {
-        if (socket.username) {
-            delete onlineUsers[socket.username];
-            io.emit('update-online-list', onlineUsers);
-        }
-    });
+// RUTA ZA LJESTVICU (Leaderboard)
+app.get('/api/leaderboard', async (req, res) => {
+    try {
+        const topUsers = await User.find({ "stats.vjesala": { $exists: true } })
+            .sort({ "stats.vjesala.level": -1, "stats.vjesala.solved": -1 })
+            .limit(5);
+        res.json(topUsers.map(u => ({
+            name: u.username,
+            lvl: u.stats.vjesala.level || 0,
+            solved: u.stats.vjesala.solved || 0
+        })));
+    } catch (e) { res.status(500).json([]); }
 });
 
-app.get('/kvizovi/vjesala', (req, res) => {
-    res.sendFile(path.join(__dirname, 'kvizovi', 'vjesala.html'));
-});
-
-// LOGIN RUTA (Popravljena za Level sustav)
 app.post('/api/login', async (req, res) => {
     const { username, password, secretKey } = req.body;
     try {
         let user = await User.findOne({ username });
-
         if (!user) {
             if (!secretKey) return res.status(400).json({ firstLogin: true });
             user = new User({ 
                 username, password, secretKey, 
-                level: 0, solvedWords: 0, 
-                lastLogin: new Date() 
+                stats: { vjesala: { level: 0, solved: 0 } } 
             });
             await user.save();
-            return res.json({ success: true, level: 0, solved: 0, username: user.username });
         }
-
         if (user.password === password) {
             res.json({ 
                 success: true, 
-                level: user.level, 
-                solved: user.solvedWords,
-                username: user.username 
+                username: user.username,
+                level: user.level,
+                streak: user.loginStreak,
+                vStats: user.stats.vjesala || { level: 0, solved: 0 }
             });
         } else {
             res.status(401).json({ success: false, message: "Netočna lozinka!" });
         }
-    } catch (err) {
-        res.status(500).json({ success: false });
-    }
+    } catch (err) { res.status(500).json({ success: false }); }
+});
+
+io.on('connection', (socket) => {
+    socket.on('login-success', (username) => {
+        socket.username = username;
+    });
+    socket.on('send-msg', (text) => {
+        if (socket.username) io.emit('receive-msg', { user: socket.username, text });
+    });
 });
 
 const PORT = process.env.PORT || 3000;
