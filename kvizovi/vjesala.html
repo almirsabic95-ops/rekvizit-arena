@@ -6,21 +6,29 @@
     <title>Vješala - Rekvizit Arena</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root { --glavna: #00d4ff; --tamna: #0b0f19; }
+        :root { --glavna: #00d4ff; --tamna: #0b0f19; --kartica: #161b2a; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--tamna); color: white; text-align: center; padding: 20px; margin: 0; }
         
+        .layout { display: flex; gap: 20px; max-width: 1000px; margin: 40px auto; flex-wrap: wrap; justify-content: center; }
+
         .game-card { 
-            background: #161b2a; max-width: 600px; margin: 40px auto; padding: 30px; 
+            background: var(--kartica); flex: 2; min-width: 320px; padding: 30px; 
             border-radius: 20px; border: 2px solid var(--glavna); 
             box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
+        }
+
+        .leaderboard-side {
+            background: var(--kartica); flex: 1; min-width: 250px; padding: 20px;
+            border-radius: 20px; border: 1px solid #2d3748; text-align: left;
         }
 
         .vjesala-stats { 
             display: flex; justify-content: space-around; background: rgba(0,0,0,0.3); 
             padding: 15px; border-radius: 12px; margin-bottom: 25px; border: 1px dashed var(--glavna);
         }
-        .stat-item { display: flex; align-items: center; gap: 10px; font-weight: bold; }
-        .v-logo { font-size: 1.6rem; filter: drop-shadow(0 0 5px var(--glavna)); }
+        
+        /* Popravljen logo da ne bude kvadratić */
+        .v-logo { font-size: 1.6rem; color: var(--glavna); font-weight: bold; }
 
         .word-display { 
             font-size: 40px; letter-spacing: 12px; margin: 30px 0; color: var(--glavna); 
@@ -32,31 +40,50 @@
         button { padding: 15px 30px; background: var(--glavna); color: black; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
 
         #logs { 
-            background: rgba(0,0,0,0.5); height: 150px; overflow-y: auto; margin-top: 30px; 
+            background: rgba(0,0,0,0.5); height: 120px; overflow-y: auto; margin-top: 20px; 
             padding: 15px; text-align: left; font-size: 0.85rem; border-radius: 10px; border: 1px solid #2d3748;
         }
+
+        /* Ljestvica stilovi */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th { color: var(--glavna); font-size: 0.8rem; border-bottom: 1px solid #2d3748; padding-bottom: 10px; }
+        td { padding: 10px 0; border-bottom: 1px solid #2d3748; font-size: 0.9rem; }
+
         .nav-back { position: absolute; top: 20px; left: 20px; color: var(--glavna); text-decoration: none; font-weight: bold; }
     </style>
 </head>
 <body>
-    <a href="/" class="nav-back">⬅ POVRATAK U LOBBY</a>
+    <a href="/" class="nav-back">⬅ LOBBY</a>
 
-    <div class="game-card">
-        <h1 style="color: var(--glavna); margin-top: 0;">🪢 VJEŠALA</h1>
-        
-        <div class="vjesala-stats">
-            <div class="stat-item"><span class="v-logo">🪢</span><span>LEVEL: <span id="v-lvl">0</span></span></div>
-            <div class="stat-item"><span class="v-logo">🪢</span><span>RIJEČI: <span id="v-sol">0</span></span></div>
+    <div class="layout">
+        <div class="game-card">
+            <h1 style="color: var(--glavna); margin-top: 0;"><span class="v-logo">#</span> VJEŠALA</h1>
+            
+            <div class="vjesala-stats">
+                <div class="stat-item">LVL: <span id="v-lvl">0</span></div>
+                <div class="stat-item">RIJEČI: <span id="v-sol">0</span></div>
+            </div>
+
+            <div class="word-display" id="display">_ _ _ _ _</div>
+            
+            <div class="input-group">
+                <input type="text" id="input" placeholder="Slovo ili riječ..." onkeypress="if(event.key==='Enter') posalji()">
+                <button onclick="posalji()">POŠALJI</button>
+            </div>
+            
+            <div id="logs"></div>
         </div>
 
-        <div class="word-display" id="display">_ _ _ _ _</div>
-        
-        <div class="input-group">
-            <input type="text" id="input" placeholder="Slovo ili riječ..." onkeypress="if(event.key==='Enter') posalji()">
-            <button onclick="posalji()">POŠALJI</button>
+        <div class="leaderboard-side">
+            <h3 style="color: var(--glavna); margin: 0;">🏆 Top V-Level</h3>
+            <table>
+                <thead>
+                    <tr><th>IGRAČ</th><th>LVL</th><th>SOLVED</th></tr>
+                </thead>
+                <tbody id="l-body">
+                    </tbody>
+            </table>
         </div>
-        
-        <div id="logs"></div>
     </div>
 
     <script>
@@ -66,21 +93,34 @@
         if(!korisnik) window.location.href = "/";
         socket.emit('login-success', korisnik);
         socket.emit('vjesala-trazi-stanje');
+        osvjeziLjestvicu();
 
         function posalji() {
             const el = document.getElementById('input');
-            if(el.value.trim()) { socket.emit('vjesala-pokusaj', { input: el.value.trim() }); el.value = ""; }
+            if(el.value.trim()) {
+                socket.emit('vjesala-pokusaj', { input: el.value.trim() });
+                el.value = "";
+            }
+        }
+
+        async function osvjeziLjestvicu() {
+            try {
+                const res = await fetch('/api/leaderboard');
+                const data = await res.json();
+                document.getElementById('l-body').innerHTML = data.map(u => `
+                    <tr><td>${u.name}</td><td><b>${u.lvl}</b></td><td>${u.solved}</td></tr>
+                `).join('');
+            } catch (e) { console.log("Greška ljestvice"); }
         }
 
         socket.on('vjesala-nova-runda', (data) => {
             document.getElementById('display').innerText = data.prikaz;
-            if(data.stats) {
-                document.getElementById('v-lvl').innerText = data.stats.level;
-                document.getElementById('v-sol').innerText = data.stats.solved;
-            }
+            osvjeziLjestvicu(); // Osvježi kad neko pobjedi
         });
 
-        socket.on('vjesala-update', (data) => { document.getElementById('display').innerText = data.prikaz; });
+        socket.on('vjesala-update', (data) => {
+            document.getElementById('display').innerText = data.prikaz;
+        });
 
         socket.on('vjesala-poruka', (data) => {
             const logs = document.getElementById('logs');
@@ -88,6 +128,7 @@
             if(data.stats) {
                 document.getElementById('v-lvl').innerText = data.stats.level;
                 document.getElementById('v-sol').innerText = data.stats.solved;
+                osvjeziLjestvicu();
             }
         });
     </script>

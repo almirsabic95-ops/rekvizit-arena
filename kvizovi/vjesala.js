@@ -8,22 +8,28 @@ let lokalnaBazaRijeci = [];
 
 async function ucitajBazuRijeci() {
     try {
-        console.log("⏳ Preuzimanje rječnika s GitHub-a...");
-        const response = await fetch('https://raw.githubusercontent.com/com-li-re/croatian-dictionary/master/dictionary.txt');
-        const text = await response.text();
+        console.log("⏳ Pokušaj preuzimanja rječnika...");
+        // Koristimo https:// umjesto raw github ako je bilo problema s CORS-om ili fetchom
+        const url = 'https://raw.githubusercontent.com/com-li-re/croatian-dictionary/master/dictionary.txt';
         
-        const filtrirane = text.split('\n')
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Mrežna greška");
+        
+        const podaci = await response.text();
+        const linije = podaci.split(/\r?\n/); // Podržava oba tipa novog reda
+        
+        lokalnaBazaRijeci = linije
             .map(w => w.trim().toUpperCase())
-            .filter(w => w.length > 3 && w.length < 12 && /^[A-ZČĆŽŠĐ]+$/.test(w));
-        
-        if (filtrirane.length > 0) {
-            lokalnaBazaRijeci = filtrirane;
-            console.log(`✅ Rječnik spreman (${lokalnaBazaRijeci.length} riječi).`);
+            .filter(w => w.length > 4 && w.length < 12 && /^[A-ZČĆŽŠĐ]+$/.test(w));
+
+        if (lokalnaBazaRijeci.length > 0) {
+            console.log(`✅ GitHub rječnik uspješno učitan (${lokalnaBazaRijeci.length} riječi).`);
         } else {
-            throw new Error("Prazan rječnik");
+            console.log("⚠️ Rječnik je prazan nakon filtriranja, koristim backup.");
+            lokalnaBazaRijeci = backupRijeci;
         }
     } catch (e) {
-        console.log("⚠️ Greška rječnika ili nema interneta, koristim backup.");
+        console.log("⚠️ Greška pri skidanju rječnika:", e.message);
         lokalnaBazaRijeci = backupRijeci;
     }
 }
@@ -31,10 +37,11 @@ async function ucitajBazuRijeci() {
 async function novaRunda(io) {
     if (lokalnaBazaRijeci.length === 0) await ucitajBazuRijeci();
     
-    // Osiguranje da trenutnaRijec nikada ne bude undefined
-    trenutnaRijec = lokalnaBazaRijeci[Math.floor(Math.random() * lokalnaBazaRijeci.length)] || "ARENA";
-    prikazRijeci = trenutnaRijec.split('').map(() => "_");
+    // Garantujemo da uvijek imamo riječ
+    const index = Math.floor(Math.random() * lokalnaBazaRijeci.length);
+    trenutnaRijec = lokalnaBazaRijeci[index] || "ARENA";
     
+    prikazRijeci = trenutnaRijec.split('').map(() => "_");
     io.emit('vjesala-nova-runda', { prikaz: prikazRijeci.join(' ') });
 }
 
@@ -67,14 +74,16 @@ async function inicijalizirajVjesala(io) {
             if (pogodak) {
                 if (!prikazRijeci.includes("_")) {
                     user.stats.vjesala.solved += 1;
+                    // Formula 2^level
                     let granica = Math.pow(2, user.stats.vjesala.level);
                     if (user.stats.vjesala.solved >= granica) {
                         user.stats.vjesala.level += 1;
                     }
                     user.markModified('stats');
                     await user.save();
+                    
                     io.emit('vjesala-poruka', { 
-                        text: `🎉 <b>${socket.username}</b> je pogodio!`, 
+                        text: `🎉 <b>${socket.username}</b> je pogodio riječ!`, 
                         stats: user.stats.vjesala 
                     });
                     setTimeout(() => novaRunda(io), 3000);
